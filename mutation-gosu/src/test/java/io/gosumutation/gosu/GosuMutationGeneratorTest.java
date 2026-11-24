@@ -139,6 +139,21 @@ class GosuMutationGeneratorTest {
     }
 
     @Test
+    void windowsLineEndingsGiveTheSameMutantsAndArePreserved() throws IOException {
+        List<String> expected = changes(generate());
+        String crlf = SAMPLE.replace("\n", "\r\n");
+        Files.writeString(sampleFile, crlf);
+
+        List<MutationDescriptor> mutants = generate();
+
+        assertEquals(expected, changes(mutants));
+        MutationDescriptor mutant = mutants.stream()
+                .filter(m -> m.line() == 11 && m.operatorId().equals("RELATIONAL_BOUNDARY")).findFirst().orElseThrow();
+        assertEquals(16, mutant.column());
+        assertEquals(crlf.replace("return a > 3 and", "return a >= 3 and"), mutant.applyTo(crlf));
+    }
+
+    @Test
     void classFilterSelectsBySimpleName() throws IOException {
         Files.writeString(sourceDir.resolve("demo/Other.gs"),
                 "package demo\nclass Other {\n  function f() : boolean { return true }\n}\n");

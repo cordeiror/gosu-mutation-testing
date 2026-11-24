@@ -66,6 +66,11 @@ public final class GosuMutationGenerator implements MutationGenerator {
         String fileContent = read(file);
         GosuSourceAnalyzer.ParsedClass parsed = analyzer.parse(typeName);
         GosuSource source = new GosuSource(parsed.source());
+        int[] fileOffsets = fileOffsets(parsed.source(), fileContent);
+        if (fileOffsets == null) {
+            throw new GosuAnalysisException("The text the Gosu parser read for " + typeName
+                    + " does not match the content of " + file + "; refusing to compute mutations for it");
+        }
 
         parsed.forEachElement(element -> {
             if (element.isSynthetic() || element.findAncestorParsedElementByType(IAnnotationExpression.class) != null) {
@@ -73,14 +78,15 @@ public final class GosuMutationGenerator implements MutationGenerator {
             }
             for (GosuMutationOperator operator : enabled) {
                 for (SourceEdit edit : operator.mutate(element, source)) {
-                    // The parser's offsets are only usable if they address the same text on disk.
-                    if (edit.end() > fileContent.length()
-                            || !fileContent.regionMatches(edit.start(), source.text(), edit.start(), edit.end() - edit.start())) {
+                    if (edit.start() < 0 || edit.end() <= edit.start() || edit.end() > parsed.source().length()) {
                         continue;
                     }
-                    String original = fileContent.substring(edit.start(), edit.end());
-                    String id = MutationDescriptor.computeId(relativePath, operator.id(), edit.start(), original, edit.replacement());
-                    String mutatedContent = fileContent.substring(0, edit.start()) + edit.replacement() + fileContent.substring(edit.end());
+                    // Parser offsets are translated to offsets in the file as it is on disk.
+                    int start = fileOffsets[edit.start()];
+                    int end = fileOffsets[edit.end() - 1] + 1;
+                    String original = fileContent.substring(start, end);
+                    String id = MutationDescriptor.computeId(relativePath, operator.id(), start, original, edit.replacement());
+                    String mutatedContent = fileContent.substring(0, start) + edit.replacement() + fileContent.substring(end);
                     mutants.putIfAbsent(id, new MutationDescriptor(
                             id,
                             operator.id(),
@@ -90,16 +96,44 @@ public final class GosuMutationGenerator implements MutationGenerator {
                             methodNameOf(element),
                             source.lineOf(edit.start()),
                             source.columnOf(edit.start()),
-                            edit.start(),
-                            edit.end(),
+                            start,
+                            end,
                             original,
                             edit.replacement(),
                             edit.description(),
-                            GosuSource.lineAt(fileContent, edit.start()),
-                            GosuSource.lineAt(mutatedContent, edit.start())));
+                            GosuSource.lineAt(fileContent, start),
+                            GosuSource.lineAt(mutatedContent, start)));
                 }
             }
         });
+    }
+
+    /**
+     * Maps each offset of the text the parser saw to the offset of the same character in the file.
+     * The Gosu parser drops carriage returns, so for a file with Windows line endings the two
+     * differ. Differences in trailing whitespace are tolerated, since no mutation can be there.
+     *
+     * @return {@code null} when the texts differ in anything else
+     */
+    static int[] fileOffsets(String parserText, String fileContent) {
+        int[] offsets = new int[parserText.length()];
+        int filePosition = 0;
+        for (int i = 0; i < parserText.length(); i++) {
+            char expected = parserText.charAt(i);
+            while (filePosition < fileContent.length() && fileContent.charAt(filePosition) != expected
+                    && fileContent.charAt(filePosition) == '\r') {
+                filePosition++;
+            }
+            if (filePosition < fileContent.length() && fileContent.charAt(filePosition) == expected) {
+                offsets[i] = filePosition++;
+            } else if (parserText.substring(i).isBlank() && fileContent.substring(filePosition).isBlank()) {
+                java.util.Arrays.fill(offsets, i, offsets.length, fileContent.length());
+                return offsets;
+            } else {
+                return null;
+            }
+        }
+        return fileContent.substring(filePosition).isBlank() ? offsets : null;
     }
 
     private static String classNameOf(IParsedElement element, String fallback) {
