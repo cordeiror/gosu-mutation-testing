@@ -179,8 +179,8 @@ platform specific is implemented.
 
 ## Limitations
 
-- Verified on macOS with Temurin JDK 21 and JDK 17, and Gosu 1.18.14. The CI workflow also builds
-  on Linux and Windows, but those have not been verified yet. Java 25 does not work.
+- Verified with Gosu 1.18.14 on macOS, Linux and Windows with Java 21, and on macOS and Linux with
+  Java 17 (see the CI workflow). Java 25 does not work.
 - Every covered mutant triggers a full recompilation of the project and a full test run (a few
   seconds each on the sample). Fine for small projects, slow for large ones.
 - Coverage is line level and for the whole suite. There is no per test selection yet.

@@ -18,6 +18,7 @@ Everything below was verified by running it, on macOS with Temurin JDK 17.0.2 an
 | Can Gosu tests be run automatically? | Yes. Gosu classes compile to ordinary class files (class file version 52, with `SourceFile` and line number tables). A Gosu class with JUnit 5 `@Test` functions is discovered and run by the JUnit Platform like a Java test. |
 | Is the parser accessible? | Yes, through the public API: `GosuCompiler.initializeGosu(...)`, `TypeSystem.getByFullNameIfValid(name)`, `IGosuClass.getClassStatement()`, then `IParsedElement` / `IParseTree`. Every node has an exact character offset and length, a line and a column, its enclosing function name and, for expressions, its type. Comments and string literals are not expression nodes, so they are never mutated. |
 | Class loading constraints? | The Gosu type system is a JVM wide singleton. It can be initialized and uninitialized repeatedly in one JVM, but two projects cannot be loaded at once. |
+| Line endings? | The parser drops carriage returns, so its offsets do not match a file with Windows (CRLF) line endings. `GosuMutationGenerator` translates parser offsets to file offsets and keeps the original line endings. |
 | Surprises? | Gosu resolves the annotations of every Java class it reads. JUnit's classes are annotated with `@API` from `apiguardian-api`, which Gradle treats as compile only, so it has to be added explicitly or Gosu fails with `ClassNotFoundException: org.apiguardian.api.API`. |
 
 ### Java version
@@ -200,7 +201,8 @@ executed rather than wrongly skipped. If coverage cannot be collected, every mut
 - The timeout applies to compilation and to the test run separately.
 - Inner classes are reported with the name Gosu gives them; class filters match top level classes.
 - Equivalent mutants are not detected.
-- Verified only on macOS (JDK 17 and 21) so far.
+- Verified on macOS, Linux and Windows with JDK 21, and on macOS and Linux with JDK 17. Other
+  combinations have not been tried.
 
 ## Performance ideas (not implemented)
 
