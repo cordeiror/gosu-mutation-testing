@@ -56,16 +56,36 @@ tasks.register('mutateClass', JavaExec) {
         def className = packageName + '.' + source.name.substring(0, source.name.length() - 3)
 
         def trial = new File(trialDirProperty.get()).absoluteFile
+        def testDir = new File(trial, 'src/test/gosu')
+        def stubsDir = new File(trial, 'src/stubs/gosu')
+        def hasGosuFiles = { File dir ->
+            dir.isDirectory() && java.nio.file.Files.walk(dir.toPath()).withCloseable { paths ->
+                paths.anyMatch { it.toString().endsWith('.gs') }
+            }
+        }
+        if (!hasGosuFiles(testDir)) {
+            def nested = trial.isDirectory() ? (trial.listFiles().findAll { it.isDirectory() && new File(it, 'src/test/gosu').isDirectory() }) : []
+            throw new GradleException("No Gosu tests found in ${testDir}.\n"
+                    + "Expected layout:\n"
+                    + "  ${trial}${File.separator}src${File.separator}test${File.separator}gosu${File.separator}<package>${File.separator}<Class>Test.gs   (tests, required)\n"
+                    + "  ${trial}${File.separator}src${File.separator}stubs${File.separator}gosu${File.separator}...                 (stand-in types, optional)\n"
+                    + (nested ? "Found src${File.separator}test${File.separator}gosu one level deeper, in ${nested*.path.join(', ')}: "
+                        + "move its contents up to ${trial} or pass that folder as -PtrialDir.\n" : '')
+                    + 'If you extracted a zip, check that it did not create an extra folder level.')
+        }
+
         def targetDir = new File(trial, 'src/main/gosu/' + packageName.replace('.', '/'))
         targetDir.mkdirs()
-        new File(trial, 'src/test/gosu').mkdirs()
         java.nio.file.Files.copy(source.toPath(), new File(targetDir, source.name).toPath(),
                 java.nio.file.StandardCopyOption.REPLACE_EXISTING)
         logger.lifecycle("Copied ${source} to ${targetDir}")
 
         def cliArgs = ['run', '--project', trial.path, '--class', className, '--test-dir', 'src/test/gosu']
-        if (new File(trial, 'src/stubs/gosu').isDirectory()) {
+        if (stubsDir.isDirectory()) {
             cliArgs += ['--test-dir', 'src/stubs/gosu']
+            logger.lifecycle("Using stand-in types from ${stubsDir}")
+        } else {
+            logger.lifecycle("No ${stubsDir}: every type the class uses must come from Gosu, the JDK or --classpath")
         }
         if (extraArgsProperty.present) {
             cliArgs += extraArgsProperty.get().tokenize()
