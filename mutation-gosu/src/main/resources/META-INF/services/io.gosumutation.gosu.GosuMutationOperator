@@ -1,0 +1,6 @@
+io.gosumutation.gosu.operators.RelationalBoundaryOperator
+io.gosumutation.gosu.operators.EqualityOperator
+io.gosumutation.gosu.operators.LogicalOperator
+io.gosumutation.gosu.operators.BooleanLiteralOperator
+io.gosumutation.gosu.operators.NumericLiteralOperator
+io.gosumutation.gosu.operators.BooleanReturnOperator

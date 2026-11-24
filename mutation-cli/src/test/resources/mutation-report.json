@@ -1,0 +1,30 @@
+{
+  "schemaVersion" : 1,
+  "generatedAt" : "2026-01-01T00:00:00Z",
+  "projectDir" : "/project",
+  "sourceDirs" : [ "/project/src/main/gosu" ],
+  "testDirs" : [ "/project/src/test/gosu" ],
+  "timeoutSeconds" : 60,
+  "parallelism" : 1,
+  "operators" : [ "LOGICAL" ],
+  "baselineTestsRun" : 2,
+  "baselineDurationMillis" : 1000,
+  "coverageAvailable" : true,
+  "totalDurationMillis" : 5000,
+  "score" : {
+    "total" : 1, "killed" : 1, "survived" : 0, "noCoverage" : 0, "timedOut" : 0, "compilationErrors" : 0,
+    "runErrors" : 0, "notRun" : 0, "mutationScore" : 100.0, "scoreIncludingUncovered" : 100.0
+  },
+  "results" : [ {
+    "mutation" : {
+      "id" : "0123456789ab", "operatorId" : "LOGICAL", "sourceRoot" : "/project/src/main/gosu",
+      "relativePath" : "demo/Foo.gs", "className" : "demo.Foo", "methodName" : "check", "line" : 5, "column" : 20,
+      "startOffset" : 80, "endOffset" : 83, "originalText" : "and", "replacementText" : "or",
+      "description" : "replaced and with or", "originalLine" : "return a and b", "mutatedLine" : "return a or b"
+    },
+    "status" : "KILLED",
+    "killingTests" : [ "demo.FooTest.rejects()" ],
+    "durationMillis" : 3000,
+    "details" : ""
+  } ]
+}

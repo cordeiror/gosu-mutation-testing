@@ -1,0 +1,5 @@
+dependencies {
+    api project(':mutation-core')
+    implementation "org.gosu-lang.gosu:gosu-core:${gosuVersion}"
+    implementation "org.gosu-lang.gosu:gosu-core-api:${gosuVersion}"
+}

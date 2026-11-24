@@ -1,0 +1,15 @@
+dependencies {
+    api project(':mutation-core')
+    implementation platform("org.junit:junit-bom:${junitVersion}")
+    implementation 'org.junit.platform:junit-platform-launcher'
+    implementation "org.jacoco:org.jacoco.core:${jacocoVersion}"
+    implementation "org.jacoco:org.jacoco.agent:${jacocoVersion}"
+    // Bundled so that Gosu tests written against JUnit 5 or JUnit 4 compile and run out of the box.
+    runtimeOnly 'org.junit.jupiter:junit-jupiter'
+    runtimeOnly 'org.junit.vintage:junit-vintage-engine'
+    // Gosu resolves the annotations of every Java type it touches, so JUnit's compile-only
+    // @API annotation must be present when Gosu tests are compiled.
+    runtimeOnly 'org.apiguardian:apiguardian-api:1.1.2'
+
+    testImplementation project(':mutation-gosu')
+}

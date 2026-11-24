@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gosu Mutation Report</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --surface: #ffffff; --border: #e1e4ea; --text: #1c2330; --muted: #667085;
+    --accent: #3257d6; --code-bg: #f1f3f7;
+    --killed: #1a7f4b; --killed-bg: #e3f4ea;
+    --survived: #c0352b; --survived-bg: #fbe7e5;
+    --nocov: #9a6400; --nocov-bg: #fbf0d6;
+    --timeout: #6b46c1; --timeout-bg: #ede7fa;
+    --invalid: #55606f; --invalid-bg: #e8ebf0;
+    --add: #e3f4ea; --del: #fbe7e5;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #12151b; --surface: #1b1f27; --border: #2c323d; --text: #e6e9ef; --muted: #98a2b3;
+      --accent: #8aa4ff; --code-bg: #232833;
+      --killed: #5fd08f; --killed-bg: #173424;
+      --survived: #ff8b80; --survived-bg: #3d1c19;
+      --nocov: #f0bd56; --nocov-bg: #3a2c0d;
+      --timeout: #b79cf5; --timeout-bg: #2a2144;
+      --invalid: #aab3c0; --invalid-bg: #2a303a;
+      --add: #173424; --del: #3d1c19;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font: 14px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 1180px; margin: 0 auto; padding: 28px 16px 64px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  h2 { font-size: 15px; margin: 0; }
+  .meta { color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
+  code, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12.5px; }
+
+  .summary { display: grid; grid-template-columns: minmax(230px, 300px) 1fr; gap: 16px; margin: 22px 0; }
+  @media (max-width: 760px) { .summary { grid-template-columns: 1fr; } }
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 18px; }
+  .score-value { font-size: 44px; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .score-label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .05em; }
+  .bar { display: flex; height: 10px; border-radius: 5px; overflow: hidden; background: var(--invalid-bg); margin: 14px 0 10px; }
+  .bar span { display: block; }
+  .formula { color: var(--muted); font-size: 12.5px; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); gap: 10px; align-content: start; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
+  .card .n { font-size: 24px; font-weight: 650; font-variant-numeric: tabular-nums; }
+  .card .l { color: var(--muted); font-size: 12px; }
+
+  .filters { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 0 0 14px; }
+  select, input[type=search] { font: inherit; color: var(--text); background: var(--surface);
+    border: 1px solid var(--border); border-radius: 7px; padding: 6px 9px; max-width: 100%; }
+  input[type=search] { flex: 1 1 180px; min-width: 140px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { cursor: pointer; border: 1px solid var(--border); background: var(--surface); color: var(--muted);
+    border-radius: 999px; padding: 4px 11px; font: inherit; font-size: 12.5px; }
+  .chip[aria-pressed=true] { color: var(--text); border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+  .chip:focus-visible, select:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .class { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 14px; overflow: hidden; }
+  .class-head { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: baseline; justify-content: space-between;
+    padding: 12px 16px; border-bottom: 1px solid var(--border); }
+  .class-head .stats { color: var(--muted); font-size: 12.5px; }
+  .method { padding: 8px 16px 2px; color: var(--muted); font-size: 12.5px; background: var(--bg); border-bottom: 1px solid var(--border); }
+  .method b { color: var(--text); font-weight: 600; }
+  details.mutant { border-bottom: 1px solid var(--border); }
+  details.mutant:last-child { border-bottom: 0; }
+  details.mutant > summary { list-style: none; cursor: pointer; display: grid; gap: 4px 12px; align-items: center;
+    grid-template-columns: 138px 54px 1fr auto; padding: 9px 16px; }
+  details.mutant > summary::-webkit-details-marker { display: none; }
+  details.mutant > summary:hover { background: var(--bg); }
+  @media (max-width: 760px) { details.mutant > summary { grid-template-columns: auto 1fr auto; } .col-line { display: none; } }
+  .badge { display: inline-block; border-radius: 5px; padding: 2px 8px; font-size: 11.5px; font-weight: 650; letter-spacing: .02em; white-space: nowrap; }
+  .s-KILLED { color: var(--killed); background: var(--killed-bg); }
+  .s-SURVIVED { color: var(--survived); background: var(--survived-bg); }
+  .s-NO_COVERAGE { color: var(--nocov); background: var(--nocov-bg); }
+  .s-TIMED_OUT { color: var(--timeout); background: var(--timeout-bg); }
+  .s-COMPILATION_ERROR, .s-RUN_ERROR, .s-NOT_RUN { color: var(--invalid); background: var(--invalid-bg); }
+  .desc { overflow-wrap: anywhere; }
+  .time { color: var(--muted); font-size: 12.5px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .body { padding: 4px 16px 14px; }
+  .diff { background: var(--code-bg); border-radius: 7px; overflow-x: auto; margin: 6px 0 10px; }
+  .diff div { padding: 3px 10px; white-space: pre; }
+  .diff .del { background: var(--del); }
+  .diff .add { background: var(--add); }
+  dl { display: grid; grid-template-columns: max-content 1fr; gap: 3px 14px; margin: 0; font-size: 13px; }
+  dt { color: var(--muted); }
+  dd { margin: 0; overflow-wrap: anywhere; }
+  pre.details { background: var(--code-bg); border-radius: 7px; padding: 10px; overflow-x: auto; max-height: 260px; margin: 8px 0 0; }
+  .empty { color: var(--muted); text-align: center; padding: 40px 0; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Gosu Mutation Report</h1>
+  <div class="meta" id="meta"></div>
+
+  <section class="summary">
+    <div class="panel">
+      <div class="score-label">Mutation score</div>
+      <div class="score-value" id="score"></div>
+      <div class="bar" id="bar" role="img"></div>
+      <div class="formula">killed &divide; (killed + survived). Uncovered, timed out and invalid mutants are not part of the score.</div>
+      <div class="formula" id="score2" style="margin-top:6px"></div>
+    </div>
+    <div class="cards" id="cards"></div>
+  </section>
+
+  <div class="filters">
+    <select id="f-class" aria-label="Filter by class"></select>
+    <select id="f-operator" aria-label="Filter by operator"></select>
+    <input type="search" id="f-text" placeholder="Search code, method or test" aria-label="Search">
+    <div class="chips" id="f-status" role="group" aria-label="Filter by result"></div>
+  </div>
+
+  <div id="results"></div>
+</main>
+
+<script type="application/json" id="report-data">/*__REPORT_DATA__*/</script>
+<script>
+(function () {
+  'use strict';
+  var report = JSON.parse(document.getElementById('report-data').textContent);
+  var STATUSES = ['KILLED', 'SURVIVED', 'NO_COVERAGE', 'TIMED_OUT', 'COMPILATION_ERROR', 'RUN_ERROR', 'NOT_RUN'];
+  var LABELS = { KILLED: 'Killed', SURVIVED: 'Survived', NO_COVERAGE: 'No coverage', TIMED_OUT: 'Timed out',
+                 COMPILATION_ERROR: 'Compilation error', RUN_ERROR: 'Run error', NOT_RUN: 'Not run' };
+  var COLORS = { KILLED: '--killed', SURVIVED: '--survived', NO_COVERAGE: '--nocov', TIMED_OUT: '--timeout',
+                 COMPILATION_ERROR: '--invalid', RUN_ERROR: '--invalid', NOT_RUN: '--invalid' };
+  var state = { cls: '', operator: '', text: '', statuses: {} };
+
+  function el(tag, className, text) {
+    var node = document.createElement(tag);
+    if (className) { node.className = className; }
+    if (text !== undefined && text !== null) { node.textContent = text; }
+    return node;
+  }
+  function seconds(ms) { return (ms / 1000).toFixed(ms < 10000 ? 1 : 0) + 's'; }
+  function count(results, status) { return results.filter(function (r) { return r.status === status; }).length; }
+  function scoreOf(results) {
+    var killed = count(results, 'KILLED'), survived = count(results, 'SURVIVED');
+    return killed + survived === 0 ? null : Math.round(killed * 1000 / (killed + survived)) / 10;
+  }
+
+  // ---- header -----------------------------------------------------------------------------
+  var score = report.score;
+  document.getElementById('meta').textContent = report.projectDir + ' · generated ' + report.generatedAt.replace('T', ' ').slice(0, 19)
+    + ' UTC · baseline: ' + report.baselineTestsRun + ' tests in ' + seconds(report.baselineDurationMillis)
+    + ' · total time ' + seconds(report.totalDurationMillis)
+    + (report.coverageAvailable ? '' : ' · coverage unavailable (every mutant was executed)');
+  document.getElementById('score').textContent = (score.killed + score.survived === 0) ? 'n/a' : score.mutationScore + '%';
+  document.getElementById('score2').textContent = 'Counting uncovered mutants as not killed: ' + score.scoreIncludingUncovered + '%';
+
+  var bar = document.getElementById('bar');
+  bar.setAttribute('aria-label', STATUSES.map(function (s) { return LABELS[s] + ' ' + count(report.results, s); }).join(', '));
+  STATUSES.forEach(function (status) {
+    var n = count(report.results, status);
+    if (n > 0) {
+      var segment = el('span');
+      segment.style.width = (n * 100 / report.results.length) + '%';
+      segment.style.background = 'var(' + COLORS[status] + ')';
+      segment.title = LABELS[status] + ': ' + n;
+      bar.appendChild(segment);
+    }
+  });
+
+  var cards = document.getElementById('cards');
+  [['Mutants generated', score.total], ['Killed', score.killed], ['Survived', score.survived],
+   ['No coverage', score.noCoverage], ['Timed out', score.timedOut], ['Compilation errors', score.compilationErrors],
+   ['Run errors', score.runErrors], ['Not run', score.notRun]].forEach(function (item) {
+    var card = el('div', 'card');
+    card.appendChild(el('div', 'n', item[1]));
+    card.appendChild(el('div', 'l', item[0]));
+    cards.appendChild(card);
+  });
+
+  // ---- filters ----------------------------------------------------------------------------
+  function fillSelect(id, allLabel, values) {
+    var select = document.getElementById(id);
+    var all = el('option', null, allLabel); all.value = ''; select.appendChild(all);
+    values.forEach(function (value) { var o = el('option', null, value); o.value = value; select.appendChild(o); });
+    return select;
+  }
+  function unique(values) { return values.filter(function (v, i, a) { return a.indexOf(v) === i; }).sort(); }
+
+  fillSelect('f-class', 'All classes', unique(report.results.map(function (r) { return r.mutation.className; })))
+    .addEventListener('change', function (e) { state.cls = e.target.value; render(); });
+  fillSelect('f-operator', 'All operators', unique(report.results.map(function (r) { return r.mutation.operatorId; })))
+    .addEventListener('change', function (e) { state.operator = e.target.value; render(); });
+  document.getElementById('f-text').addEventListener('input', function (e) { state.text = e.target.value.toLowerCase(); render(); });
+
+  var chips = document.getElementById('f-status');
+  STATUSES.forEach(function (status) {
+    var n = count(report.results, status);
+    if (n === 0) { return; }
+    var chip = el('button', 'chip', LABELS[status] + ' ' + n);
+    chip.type = 'button';
+    chip.setAttribute('aria-pressed', 'false');
+    chip.addEventListener('click', function () {
+      state.statuses[status] = !state.statuses[status];
+      chip.setAttribute('aria-pressed', String(!!state.statuses[status]));
+      render();
+    });
+    chips.appendChild(chip);
+  });
+
+  function matches(result) {
+    var m = result.mutation;
+    var anyStatus = STATUSES.some(function (s) { return state.statuses[s]; });
+    if (anyStatus && !state.statuses[result.status]) { return false; }
+    if (state.cls && m.className !== state.cls) { return false; }
+    if (state.operator && m.operatorId !== state.operator) { return false; }
+    if (state.text) {
+      var haystack = [m.className, m.methodName, m.originalLine, m.mutatedLine, m.description, m.id,
+                      result.killingTests.join(' ')].join(' ').toLowerCase();
+      if (haystack.indexOf(state.text) < 0) { return false; }
+    }
+    return true;
+  }
+
+  // ---- results ----------------------------------------------------------------------------
+  function mutantRow(result) {
+    var m = result.mutation;
+    var details = el('details', 'mutant');
+    var summary = el('summary');
+    var badgeCell = el('span');
+    badgeCell.appendChild(el('span', 'badge s-' + result.status, LABELS[result.status]));
+    summary.appendChild(badgeCell);
+    summary.appendChild(el('span', 'mono col-line', 'L' + m.line));
+    var desc = el('span', 'desc');
+    desc.appendChild(el('code', null, m.description));
+    summary.appendChild(desc);
+    summary.appendChild(el('span', 'time', result.durationMillis ? seconds(result.durationMillis) : '–'));
+    details.appendChild(summary);
+
+    var body = el('div', 'body');
+    var diff = el('div', 'diff mono');
+    diff.appendChild(el('div', 'del', '- ' + m.originalLine));
+    diff.appendChild(el('div', 'add', '+ ' + m.mutatedLine));
+    body.appendChild(diff);
+
+    var list = el('dl');
+    function row(term, value) { list.appendChild(el('dt', null, term)); list.appendChild(el('dd', null, value)); }
+    row('Mutant id', m.id);
+    row('Operator', m.operatorId);
+    row('Location', m.relativePath + ':' + m.line + ':' + m.column);
+    row('Killed by', result.killingTests.length ? result.killingTests.join(', ') : (result.status === 'KILLED' ? 'unknown' : '–'));
+    row('Execution time', result.durationMillis ? seconds(result.durationMillis) : 'not executed');
+    body.appendChild(list);
+    if (result.details) { body.appendChild(el('pre', 'details mono', result.details)); }
+    details.appendChild(body);
+    return details;
+  }
+
+  function render() {
+    var container = document.getElementById('results');
+    container.textContent = '';
+    var visible = report.results.filter(matches);
+    if (visible.length === 0) {
+      container.appendChild(el('div', 'empty', report.results.length ? 'No mutants match the filters.' : 'No mutants were generated.'));
+      return;
+    }
+    unique(visible.map(function (r) { return r.mutation.className; })).forEach(function (className) {
+      var all = report.results.filter(function (r) { return r.mutation.className === className; });
+      var shown = visible.filter(function (r) { return r.mutation.className === className; });
+      var section = el('section', 'class');
+      var head = el('div', 'class-head');
+      head.appendChild(el('h2', 'mono', className));
+      var classScore = scoreOf(all);
+      head.appendChild(el('span', 'stats', (classScore === null ? 'score n/a' : 'score ' + classScore + '%') + ' · '
+        + count(all, 'KILLED') + ' killed · ' + count(all, 'SURVIVED') + ' survived · ' + all.length + ' mutants'));
+      section.appendChild(head);
+
+      var methods = [];
+      shown.forEach(function (r) { if (methods.indexOf(r.mutation.methodName) < 0) { methods.push(r.mutation.methodName); } });
+      methods.forEach(function (methodName) {
+        var inMethod = all.filter(function (r) { return r.mutation.methodName === methodName; });
+        var methodScore = scoreOf(inMethod);
+        var header = el('div', 'method');
+        header.appendChild(el('b', 'mono', methodName));
+        header.appendChild(document.createTextNode(' — ' + (methodScore === null ? 'score n/a' : 'score ' + methodScore + '%')
+          + ', ' + count(inMethod, 'KILLED') + '/' + inMethod.length + ' killed'));
+        section.appendChild(header);
+        shown.filter(function (r) { return r.mutation.methodName === methodName; })
+             .forEach(function (r) { section.appendChild(mutantRow(r)); });
+      });
+      container.appendChild(section);
+    });
+  }
+  render();
+})();
+</script>
+</body>
+</html>

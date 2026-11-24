@@ -1,0 +1,54 @@
+plugins {
+    id 'base'
+}
+
+ext {
+    gosuVersion = '1.18.14'
+    junitVersion = '5.11.4'
+    jacocoVersion = '0.8.13'
+    jacksonVersion = '2.18.2'
+    picocliVersion = '4.7.6'
+}
+
+allprojects {
+    group = 'io.github.gosumutation'
+    version = '0.1.0'
+}
+
+subprojects {
+    apply plugin: 'java-library'
+
+    repositories {
+        mavenCentral()
+    }
+
+    java {
+        toolchain {
+            // Gosu 1.18.14 was verified on Java 21 (default) and Java 17 (-PjavaVersion=17).
+            // It does NOT run on Java 25; see docs/architecture.md ("Java version").
+            languageVersion = JavaLanguageVersion.of((findProperty('javaVersion') ?: '21') as int)
+        }
+    }
+
+    dependencies {
+        testImplementation platform("org.junit:junit-bom:${junitVersion}")
+        testImplementation 'org.junit.jupiter:junit-jupiter'
+        testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    }
+
+    tasks.withType(JavaCompile).configureEach {
+        options.encoding = 'UTF-8'
+        // The toolchain (21 by default) builds and tests; the class files stay runnable on Java 17,
+        // so the installed gosu-mutation command works on both verified JDKs.
+        options.release = 17
+        options.compilerArgs << '-Xlint:all' << '-Xlint:-processing' << '-Xlint:-serial'
+    }
+
+    tasks.withType(Test).configureEach {
+        useJUnitPlatform()
+        testLogging {
+            events = ['failed', 'skipped']
+            exceptionFormat = 'full'
+        }
+    }
+}

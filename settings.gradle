@@ -1,0 +1,10 @@
+plugins {
+    // Lets Gradle download a JDK that is not installed, e.g. JDK 21 on a machine that only has another version.
+    id 'org.gradle.toolchains.foojay-resolver-convention' version '1.0.0'
+}
+
+rootProject.name = 'gosu-mutation-testing'
+
+include 'mutation-core', 'mutation-gosu', 'mutation-runner', 'mutation-report', 'mutation-cli'
+// sample-gosu-project is intentionally NOT a Gradle module: it is a plain Gosu source tree
+// that the framework compiles and tests by itself.

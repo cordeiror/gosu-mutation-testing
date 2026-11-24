@@ -1,0 +1,29 @@
+plugins {
+    id 'application'
+}
+
+dependencies {
+    implementation project(':mutation-core')
+    implementation project(':mutation-gosu')
+    implementation project(':mutation-runner')
+    implementation project(':mutation-report')
+    implementation "info.picocli:picocli:${picocliVersion}"
+}
+
+application {
+    applicationName = 'gosu-mutation'
+    mainClass = 'io.gosumutation.cli.Main'
+}
+
+// Runs the framework against the bundled demo project:  ./gradlew :mutation-cli:mutationSample
+tasks.register('mutationSample', JavaExec) {
+    group = 'verification'
+    description = 'Runs mutation testing on sample-gosu-project and writes the HTML/JSON reports.'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = application.mainClass
+    args 'run', '--project', rootProject.file('sample-gosu-project').absolutePath
+}
+
+tasks.named('test') {
+    systemProperty 'sample.project.dir', rootProject.file('sample-gosu-project').absolutePath
+}
