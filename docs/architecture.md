@@ -124,7 +124,18 @@ the whole pipeline for real.
 ### mutation-report, mutation-cli
 
 Report writers (Jackson for JSON, a single self contained HTML page that embeds the same JSON) and
-the picocli command line.
+the picocli command line. `gosu-mutation class` copies one class (and its tests) from another code
+base into a trial project and runs `run` on it; `run` writes `baseline-failure.txt` next to the
+reports when the baseline fails, for tools that need the reason.
+
+### intellij-plugin
+
+A separate Gradle build (it downloads IntelliJ IDEA to compile against) that includes the main build
+and bundles the command line tool's jars. The plugin does not parse Gosu: it works with file paths,
+runs `gosu-mutation class` as a child process with the IDE's Java runtime, and reads the report and
+`baseline-failure.txt` it leaves behind. The AI stub request is assembled from the compiler errors,
+the class, its test and `docs/stubbing-guide.md`; the plugin hands it to the user (clipboard and an
+editor tab) and does not call any AI service itself.
 
 ### Differences from the layout in the original brief
 

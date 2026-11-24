@@ -150,6 +150,49 @@ helpers: [docs/stubbing-guide.md](docs/stubbing-guide.md).
 Keep trial projects outside this repository so code from another code base is never committed here.
 Stubs replace real behaviour with assumptions, so results are only as accurate as those assumptions.
 
+## IntelliJ IDEA plugin
+
+`intellij-plugin/` contains a plugin for IntelliJ IDEA 2025.3 (build 253). Right-click a `.gs`
+file, in the Project view or in the editor, and choose **Run Mutation Testing**:
+
+1. The plugin finds the test of the class with the test folder mappings from the settings
+   (`Foo.gs` is matched with `FooTest.gs`), or asks for it.
+2. It runs `gosu-mutation class` for that class in a trial project of its own, and shows the output
+   in the Run window.
+3. At the end it opens the HTML report.
+
+When the class or its test does not compile because they use types from their original code base,
+the plugin offers **Build AI Stub Request**: it puts together the compiler errors, the class, the
+test and the [stubbing guide](docs/stubbing-guide.md), copies that request to the clipboard and
+opens it in an editor tab. Paste it into an AI assistant that can write files (for example GitHub
+Copilot Chat in agent mode), let it create the stubs, and run again.
+
+The plugin bundles the command line tool and runs it with the IDE's own Java runtime, so nothing
+else has to be installed.
+
+Build the plugin (the first build downloads IntelliJ IDEA, about 1.5 GB):
+
+```bash
+./gradlew -p intellij-plugin buildPlugin
+```
+
+Install `intellij-plugin/build/distributions/gosu-mutation-intellij-0.1.0.zip` with
+**Settings | Plugins | ⚙ | Install Plugin from Disk...**, then review
+**Settings | Tools | Gosu Mutation Testing**:
+
+| Setting | Default | Meaning |
+| --- | --- | --- |
+| Trial projects folder | `~/gosu-mutation-trials` | One trial project per class is created here. |
+| Stubs folder | empty | Stand-in types shared by all classes. Empty: `<trial>/src/stubs/gosu`. |
+| Test folder mappings | `src/main/gosu=src/test/gosu` | `source=test` folder pairs separated by `;`. |
+| Java home | empty | JDK 17 or 21 that runs the tool. Empty: the IDE's runtime. |
+| Tool jars folder | empty | Only to use another build of the tool. |
+| Extra run options | empty | Other `run` options, e.g. `--threads 2 --timeout 120`. |
+
+Plugin tests (`./gradlew -p intellij-plugin test`) run the bundled tool for real and start a
+headless IntelliJ IDEA to check the actions and settings; `./gradlew -p intellij-plugin verifyPlugin`
+checks binary compatibility with IntelliJ IDEA 2025.3.4.
+
 ## Writing tests the tool can run
 
 Tests are Gosu classes discovered by the JUnit Platform. Use JUnit 5 annotations:
@@ -209,6 +252,7 @@ Details and how to add your own: [docs/mutation-operators.md](docs/mutation-oper
 | `mutation-runner` | Isolated workspaces, mutant execution, JUnit test runner, coverage. |
 | `mutation-report` | HTML and JSON reports. |
 | `mutation-cli` | The `gosu-mutation` command. |
+| `intellij-plugin` | IntelliJ IDEA plugin (separate Gradle build that bundles the command). |
 | `sample-gosu-project` | Demo Gosu project (not a Gradle module). |
 
 More in [docs/architecture.md](docs/architecture.md).

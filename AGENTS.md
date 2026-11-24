@@ -9,6 +9,7 @@ structural changes.
 - One module: `./gradlew :mutation-gosu:test`
 - Run the tool on the demo project: `./gradlew :mutation-cli:mutationSample`
 - Install the CLI locally: `./gradlew :mutation-cli:installDist`
+- IntelliJ plugin (separate build, downloads the IDE): `./gradlew -p intellij-plugin test buildPlugin verifyPlugin`
 
 The integration tests start child JVMs (Gosu compiler, JUnit) and take about a minute in total.
 
@@ -51,6 +52,15 @@ Stubs and the user's code stay outside this repository: never commit them here.
 - A new compiler: implement `io.gosumutation.core.port.ProjectCompiler`.
 - A new report format: implement `io.gosumutation.core.port.ReportGenerator` and add it to
   `ReportFormats` in `mutation-cli`.
+
+## IntelliJ plugin
+
+- Logic that does not need the IDE (finding tests, building the command line, the AI stub request)
+  lives in plain classes with plain JUnit 5 tests. Classes that touch the IntelliJ API stay thin.
+- The plugin bundles `mutation-cli/build/install/gosu-mutation/lib` in `<plugin>/cli/lib` and runs
+  `io.gosumutation.cli.Main class ...` with the IDE's Java runtime. Change the CLI and the plugin
+  together.
+- Plugin IDs may not contain the word "intellij" (the Plugin Verifier rejects it).
 
 ## Things that are easy to get wrong
 

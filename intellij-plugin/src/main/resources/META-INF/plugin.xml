@@ -1,0 +1,41 @@
+<idea-plugin>
+    <id>io.github.gosumutation.ide</id>
+    <name>Gosu Mutation Testing</name>
+    <vendor url="https://github.com/cordeiror/gosu-mutation-testing">gosu-mutation-testing</vendor>
+
+    <description><![CDATA[
+    Mutation testing for Gosu classes, from the IDE.<br>
+    Right-click a <code>.gs</code> file and choose <b>Run Mutation Testing</b>: the class and its test are copied
+    into a separate trial project, mutated one change at a time and tested; the HTML report opens at the end.
+    Original files are never modified.<br>
+    When the class depends on types that are not available, <b>Build AI Stub Request</b> prepares a request for an
+    AI assistant (for example GitHub Copilot Chat in agent mode) to create minimal stand-in types.
+    ]]></description>
+
+    <depends>com.intellij.modules.platform</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <applicationConfigurable parentId="tools"
+                                 instance="io.gosumutation.intellij.GosuMutationConfigurable"
+                                 id="io.gosumutation.intellij.settings"
+                                 displayName="Gosu Mutation Testing"/>
+        <notificationGroup id="Gosu Mutation Testing" displayType="BALLOON"/>
+    </extensions>
+
+    <actions>
+        <group id="GosuMutation.Group" text="Gosu Mutation Testing" popup="false">
+            <separator/>
+            <action id="GosuMutation.Run"
+                    class="io.gosumutation.intellij.RunMutationTestingAction"
+                    text="Run Mutation Testing"
+                    description="Mutation test this Gosu class in a separate trial project"
+                    icon="AllIcons.Actions.Execute"/>
+            <action id="GosuMutation.BuildStubRequest"
+                    class="io.gosumutation.intellij.BuildStubRequestAction"
+                    text="Build AI Stub Request"
+                    description="Prepare a request for an AI assistant to create the stand-in types this class needs"/>
+            <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
+            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+        </group>
+    </actions>
+</idea-plugin>
