@@ -112,6 +112,30 @@ Progress is logged to standard error, one structured line per event:
 Rebuilds reports from the `mutation-report.json` of an earlier run, without running anything.
 Options: `--input <file>`, `--project <dir>`, `--report-dir <dir>`, `--format html,json`.
 
+### Mutation testing one class from another code base
+
+To try a single class that lives in a larger code base, keep a separate *trial project* with the
+tests for that class and let Gradle copy the class into it:
+
+```bash
+./gradlew :mutation-cli:mutateClass -PsourceFile=<path to the .gs file> -PtrialDir=<trial project dir>
+```
+
+On Windows (cmd or PowerShell):
+
+```bat
+gradlew.bat :mutation-cli:mutateClass -PsourceFile=C:\path\to\MyClass.gs -PtrialDir=D:\trials\my-class
+```
+
+The task reads the `package` of the file, copies it to
+`<trialDir>/src/main/gosu/<package path>/` (the original is only read), and mutates only that class.
+Put the tests in `<trialDir>/src/test/gosu`. If the class needs types that are not available outside
+its code base, write minimal stand-ins for them in `<trialDir>/src/stubs/gosu`: they are compiled
+with the tests and never mutated. Other `run` options go in `-PmutationArgs="--threads 2 --timeout 120"`.
+
+Keep trial projects outside this repository so code from another code base is never committed here.
+Stubs replace real behaviour with assumptions, so results are only as accurate as those assumptions.
+
 ## Writing tests the tool can run
 
 Tests are Gosu classes discovered by the JUnit Platform. Use JUnit 5 annotations:

@@ -24,6 +24,56 @@ tasks.register('mutationSample', JavaExec) {
     args 'run', '--project', rootProject.file('sample-gosu-project').absolutePath
 }
 
+// Mutation tests one Gosu class taken from another code base:
+//   ./gradlew :mutation-cli:mutateClass -PsourceFile=<path to the .gs file> -PtrialDir=<trial project dir>
+// The class is copied into <trialDir>/src/main/gosu/<package path>/ (the original file is only read)
+// and only that class is mutated. The trial project holds the tests in src/test/gosu and,
+// optionally, stand-ins for types the class needs in src/stubs/gosu (compiled, never mutated).
+// Extra CLI options can be passed with -PmutationArgs="--threads 2 --timeout 120".
+tasks.register('mutateClass', JavaExec) {
+    group = 'verification'
+    description = 'Copies one Gosu class into a trial project and mutation tests it. Needs -PsourceFile and -PtrialDir.'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = application.mainClass
+
+    def sourceFileProperty = providers.gradleProperty('sourceFile')
+    def trialDirProperty = providers.gradleProperty('trialDir')
+    def extraArgsProperty = providers.gradleProperty('mutationArgs')
+
+    doFirst {
+        if (!sourceFileProperty.present || !trialDirProperty.present) {
+            throw new GradleException('Usage: gradlew :mutation-cli:mutateClass -PsourceFile=<path to the .gs file> -PtrialDir=<trial project dir>')
+        }
+        def source = new File(sourceFileProperty.get()).absoluteFile
+        if (!source.isFile() || !source.name.endsWith('.gs')) {
+            throw new GradleException("Not a Gosu class file: ${source}")
+        }
+        def packageMatch = source.getText('UTF-8') =~ /(?m)^\s*package\s+([\w.]+)/
+        if (!packageMatch.find()) {
+            throw new GradleException("No package declaration found in ${source}")
+        }
+        def packageName = packageMatch.group(1)
+        def className = packageName + '.' + source.name.substring(0, source.name.length() - 3)
+
+        def trial = new File(trialDirProperty.get()).absoluteFile
+        def targetDir = new File(trial, 'src/main/gosu/' + packageName.replace('.', '/'))
+        targetDir.mkdirs()
+        new File(trial, 'src/test/gosu').mkdirs()
+        java.nio.file.Files.copy(source.toPath(), new File(targetDir, source.name).toPath(),
+                java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+        logger.lifecycle("Copied ${source} to ${targetDir}")
+
+        def cliArgs = ['run', '--project', trial.path, '--class', className, '--test-dir', 'src/test/gosu']
+        if (new File(trial, 'src/stubs/gosu').isDirectory()) {
+            cliArgs += ['--test-dir', 'src/stubs/gosu']
+        }
+        if (extraArgsProperty.present) {
+            cliArgs += extraArgsProperty.get().tokenize()
+        }
+        args cliArgs
+    }
+}
+
 tasks.named('test') {
     systemProperty 'sample.project.dir', rootProject.file('sample-gosu-project').absolutePath
 }
