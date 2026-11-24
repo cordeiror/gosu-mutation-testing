@@ -2,9 +2,9 @@
 
 ## Goals
 
-1. Mutation test plain open source Gosu, with no platform dependency.
+1. Mutation test open source Gosu.
 2. Keep the engine independent of Gosu, so that the compiler and the test runner can be replaced
-   (most importantly by platform specific adapters, see `architecture.md`).
+   by other adapters (another build layout, another test framework, another Gosu runtime).
 3. Never modify the project under test and keep mutants isolated from each other.
 
 ## Feasibility findings (phase 1)
@@ -60,12 +60,12 @@ one that Gosu supports.
 | Speed | Slow: one compilation per mutant. | Fast. |
 | Reports | Shows the exact original and mutated source line. | Must map bytecode back to source; Gosu generates synthetic code (properties, blocks, enhancements, null safe operators, coercions) that makes this unreliable. |
 | Invalid mutants | Caught by the compiler and reported as `COMPILATION_ERROR`. | Can produce bytecode that no Gosu source could produce (false, "unreal" mutants). |
-| platform | Works wherever Gosu source can be compiled. platform compiles and loads Gosu through its own type system, sometimes from source at runtime. | Requires controlling how classes are loaded in the platform runtime, which cannot be assumed. |
+| Other Gosu runtimes | Works wherever Gosu source can be compiled. | Requires controlling how each runtime loads classes. |
 | Effort | Small: the parser API gives everything needed. | Large: a Gosu aware bytecode pattern catalogue. |
 
 **Decision:** source level mutation driven by the Gosu syntax tree. It is the simplest approach that
 gives a real end to end flow, the most faithful to what a developer would write, and the most
-likely to carry over to platform. The cost is execution time; see "Performance" for the planned
+likely to carry over to other Gosu runtimes. The cost is execution time; see "Performance" for the planned
 mitigations. A bytecode back end could be added later behind the same ports.
 
 ## Modules

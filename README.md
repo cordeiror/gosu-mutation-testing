@@ -7,7 +7,7 @@ It makes small changes ("mutants") to your Gosu code, one at a time, and runs yo
 each one. A mutant that makes a test fail is **killed**; a mutant that no test notices **survived**
 and points at behaviour your tests do not actually check, even when line coverage says 100%.
 
-- Works on plain open source Gosu. No platform dependency.
+- Works on open source Gosu.
 - Mutates with the real Gosu parser, so comments and string literals are never touched.
 - Never modifies your project: every mutant is compiled and tested in a temporary copy.
 - Produces a self contained HTML report and a JSON report.
@@ -144,10 +144,7 @@ Example with every input given explicitly (Windows):
 gradlew.bat :mutation-cli:mutateClass -PsourceFile=C:\code\src\my\pkg\MyClass.gs -PtestFile=C:\code\test\my\pkg\MyClassTest.gs -PstubsDir=D:\trials\stubs -PtrialDir=D:\trials\my-class
 ```
 
-Tests based on the platform's `PlatformTestBase` need the platform runtime and cannot be used; the task
-warns when a test file mentions it.
-
-How to write those stand-ins, with verified recipes for enum types, test base classes and
+How to write those stand-ins, with verified recipes for enum-like types, test base classes and
 helpers: [docs/stubbing-guide.md](docs/stubbing-guide.md).
 
 Keep trial projects outside this repository so code from another code base is never committed here.
@@ -214,9 +211,7 @@ Details and how to add your own: [docs/mutation-operators.md](docs/mutation-oper
 | `mutation-cli` | The `gosu-mutation` command. |
 | `sample-gosu-project` | Demo Gosu project (not a Gradle module). |
 
-More in [docs/architecture.md](docs/architecture.md). Plans for platform product, product
-and product are in [docs/architecture.md](docs/architecture.md); nothing
-platform specific is implemented.
+More in [docs/architecture.md](docs/architecture.md).
 
 ## Limitations
 

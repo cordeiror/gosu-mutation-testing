@@ -8,8 +8,8 @@ import java.util.List;
  * Runs the tests of an already compiled project.
  *
  * <p>This is the main extension point for other environments: {@code GosuTestRunner} runs JUnit
- * Platform tests of a standalone Gosu project; a {@code PlatformTestRunner} could start a
- * platform test server instead (see docs/architecture.md).
+ * Platform tests of a standalone Gosu project; other implementations can run tests in another
+ * framework or runtime.
  */
 public interface TestRunner {
 

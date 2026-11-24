@@ -14,11 +14,10 @@ The integration tests start child JVMs (Gosu compiler, JUnit) and take about a m
 
 ## Rules that must hold
 
-1. **`mutation-core` has no dependencies.** No Gosu, platform, JUnit (in main code), Gradle API or
-   any other library. It only defines the model, the engine and the ports.
-2. **No platform dependencies anywhere.** platform support is a documented future adapter
-   (`docs/architecture.md`), to be validated only in a licensed platform environment. Do
-   not guess how the platform's compiler or test runtime behaves.
+1. **`mutation-core` has no dependencies.** No Gosu, JUnit (in main code), Gradle API or any other
+   library. It only defines the model, the engine and the ports.
+2. **Only open source Gosu.** No proprietary platform dependencies, names or code in this
+   repository. Code taken from users' own code bases (classes, tests, stubs) stays outside it.
 3. **Never modify the project under test.** Mutations are applied to copies in a temporary
    `ProjectWorkspace`. Tests assert that the original sources are byte for byte unchanged; keep
    those assertions.
@@ -36,8 +35,7 @@ The integration tests start child JVMs (Gosu compiler, JUnit) and take about a m
 
 ## Mutation testing a class from another code base
 
-When a user asks to run the tool on a class from their own code base (for example a platform
-configuration), use `./gradlew :mutation-cli:mutateClass` and follow
+When a user asks to run the tool on a class from their own code base, use `gosu-mutation class` (or `./gradlew :mutation-cli:mutateClass`) and follow
 [docs/stubbing-guide.md](docs/stubbing-guide.md) to create stand-ins for the types it needs.
 Stubs and the user's code stay outside this repository: never commit them here.
 
