@@ -137,12 +137,14 @@ final class RunCommand implements Callable<Integer> {
         MutationEngine engine = new MutationEngine(new IsolatedBaselineRunner(compiler, testRunner),
                 new GosuMutationGenerator(), new MutationExecutor(compiler, testRunner), listener);
 
+        deleteStaleBaselineFailure(reports);
         MutationRunReport report;
         try {
             report = engine.run(configuration);
         } catch (BaselineFailedException e) {
             err.println("ERROR: " + e.getMessage());
             err.println("Mutation testing needs a project that compiles and whose tests all pass.");
+            writeBaselineFailure(reports, e, err);
             return ExitCodes.FAILURE;
         } catch (RuntimeException e) {
             err.println("ERROR: mutation run failed: " + e);
@@ -171,6 +173,26 @@ final class RunCommand implements Callable<Integer> {
             return ExitCodes.BELOW_THRESHOLD;
         }
         return ExitCodes.OK;
+    }
+
+    /** Machine readable copy of a baseline failure, for tools such as the IntelliJ plugin. */
+    static final String BASELINE_FAILURE_FILE = "baseline-failure.txt";
+
+    private static void writeBaselineFailure(Path reports, BaselineFailedException failure, PrintWriter err) {
+        try {
+            Files.createDirectories(reports);
+            Files.writeString(reports.resolve(BASELINE_FAILURE_FILE), failure.getMessage() + System.lineSeparator());
+        } catch (java.io.IOException e) {
+            err.println("WARNING: could not write " + reports.resolve(BASELINE_FAILURE_FILE) + ": " + e);
+        }
+    }
+
+    private static void deleteStaleBaselineFailure(Path reports) {
+        try {
+            Files.deleteIfExists(reports.resolve(BASELINE_FAILURE_FILE));
+        } catch (java.io.IOException ignored) {
+            // a stale file is harmless: it is overwritten on the next failure
+        }
     }
 
     private static List<Path> resolve(Path projectDir, List<Path> dirs) {

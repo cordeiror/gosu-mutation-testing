@@ -105,6 +105,58 @@ class CliEndToEndTest {
     }
 
     @Test
+    void classCommandCopiesClassAndTestIntoATrialProjectAndMutatesOnlyThatClass() throws IOException {
+        Path source = SAMPLE.resolve("src/main/gosu/sample/EligibilityService.gs");
+        Path test = SAMPLE.resolve("src/test/gosu/sample/EligibilityServiceTest.gs");
+        Path trial = reportDir.resolve("trial project");
+        Map<String, String> before = snapshot(SAMPLE.resolve("src"));
+
+        int exitCode = execute("class", "--source", source.toString(), "--test", test.toString(),
+                "--trial-dir", trial.toString(), "--quiet", "--threads", "2");
+
+        assertEquals(0, exitCode, err.toString());
+        assertEquals(before, snapshot(SAMPLE.resolve("src")), "originals must not change");
+        assertEquals(Files.readString(source), Files.readString(trial.resolve("src/main/gosu/sample/EligibilityService.gs")));
+        assertTrue(Files.exists(trial.resolve("src/test/gosu/sample/EligibilityServiceTest.gs")));
+        MutationRunReport report = JsonReportGenerator.read(trial.resolve("build/reports/gosu-mutation/mutation-report.json"));
+        assertEquals(5, report.results().size());
+        assertTrue(report.results().stream().allMatch(r -> r.status() == MutationStatus.KILLED));
+        assertEquals(2, report.parallelism(), "unknown options are passed through to run");
+    }
+
+    @Test
+    void classCommandExplainsMissingTestsAndNestedFolders() throws IOException {
+        Path nested = reportDir.resolve("trial/extracted/src/test/gosu/sample");
+        Files.createDirectories(nested);
+        Files.writeString(nested.resolve("XTest.gs"), "package sample\nclass XTest {}\n");
+
+        int exitCode = execute("class", "--source", SAMPLE.resolve("src/main/gosu/sample/EligibilityService.gs").toString(),
+                "--trial-dir", reportDir.resolve("trial").toString());
+
+        assertEquals(1, exitCode);
+        assertTrue(err.toString().contains("no Gosu tests found"), err.toString());
+        assertTrue(err.toString().contains("extracted"), err.toString());
+        assertFalse(Files.exists(reportDir.resolve("trial/src/main/gosu")), "nothing is copied when inputs are invalid");
+    }
+
+    @Test
+    void baselineFailureIsWrittenToAFileForTools() throws IOException {
+        Path trial = reportDir.resolve("broken");
+        Files.createDirectories(trial.resolve("src/main/gosu/demo"));
+        Files.createDirectories(trial.resolve("src/test/gosu/demo"));
+        Files.writeString(trial.resolve("src/main/gosu/demo/Broken.gs"),
+                "package demo\nclass Broken {\n  function f() : MissingType { return null }\n}\n");
+        Files.writeString(trial.resolve("src/test/gosu/demo/BrokenTest.gs"), "package demo\nclass BrokenTest {}\n");
+
+        int exitCode = execute("run", "--project", trial.toString(), "--quiet");
+
+        assertEquals(1, exitCode);
+        String failure = Files.readString(trial.resolve("build/reports/gosu-mutation/baseline-failure.txt"));
+        assertTrue(failure.contains("does not compile"), failure);
+        assertTrue(failure.contains("MissingType"), failure);
+    }
+
+    @Test
     void reportCommandRebuildsHtmlFromJson() throws IOException {
         Files.copy(Path.of("src/test/resources/mutation-report.json"), reportDir.resolve("mutation-report.json"));
 

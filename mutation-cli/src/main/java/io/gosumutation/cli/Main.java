@@ -8,7 +8,7 @@ import picocli.CommandLine.Command;
         mixinStandardHelpOptions = true,
         version = "gosu-mutation 0.1.0",
         description = "Mutation testing for the Gosu programming language.",
-        subcommands = {RunCommand.class, ReportCommand.class, OperatorsCommand.class})
+        subcommands = {RunCommand.class, ClassCommand.class, ReportCommand.class, OperatorsCommand.class})
 public final class Main implements Runnable {
 
     @CommandLine.Spec

@@ -31,7 +31,7 @@ tasks.register('mutationSample', JavaExec) {
 // testFile(s), when given, are copied into <trialDir>/src/test/gosu/<package path>/; otherwise the
 // tests must already be in <trialDir>/src/test/gosu. Stand-ins for types the class needs are taken
 // from stubsDir, or from <trialDir>/src/stubs/gosu when it exists (compiled, never mutated).
-// Original files are only read.
+// Original files are only read. Same as: gosu-mutation class --source ... --trial-dir ... [--test ...] [--stubs-dir ...]
 tasks.register('mutateClass', JavaExec) {
     group = 'verification'
     description = 'Copies one Gosu class (and optionally its tests) into a trial project and mutation tests it. Needs -PsourceFile and -PtrialDir.'
@@ -45,76 +45,17 @@ tasks.register('mutateClass', JavaExec) {
     def extraArgsProperty = providers.gradleProperty('mutationArgs')
 
     doFirst {
-        def sep = File.separator
         if (!sourceFileProperty.present || !trialDirProperty.present) {
             throw new GradleException('Usage: gradlew :mutation-cli:mutateClass -PsourceFile=<class .gs> -PtrialDir=<trial project dir> '
                     + '[-PtestFile=<test .gs>[;<test .gs>...]] [-PstubsDir=<dir>] [-PmutationArgs="..."]')
         }
-        // Returns the package declared in a Gosu file, after checking it is one.
-        def packageOf = { File file, String role ->
-            if (!file.isFile() || !file.name.endsWith('.gs')) {
-                throw new GradleException("Not a Gosu class file (${role}): ${file}")
-            }
-            def match = file.getText('UTF-8') =~ /(?m)^\s*package\s+([\w.]+)/
-            if (!match.find()) {
-                throw new GradleException("No package declaration found in ${file}")
-            }
-            match.group(1)
+        // The work is done by the CLI command "gosu-mutation class"; this task only maps properties to it.
+        def cliArgs = ['class', '--source', sourceFileProperty.get(), '--trial-dir', trialDirProperty.get()]
+        if (testFileProperty.present) {
+            testFileProperty.get().split('[;,]').collect { it.trim() }.findAll { it }.each { cliArgs += ['--test', it] }
         }
-        def copyInto = { File file, File root, String packageName ->
-            def targetDir = new File(root, packageName.replace('.', '/'))
-            targetDir.mkdirs()
-            java.nio.file.Files.copy(file.toPath(), new File(targetDir, file.name).toPath(),
-                    java.nio.file.StandardCopyOption.REPLACE_EXISTING)
-            logger.lifecycle("Copied ${file} to ${targetDir}")
-        }
-        def hasGosuFiles = { File dir ->
-            dir.isDirectory() && java.nio.file.Files.walk(dir.toPath()).withCloseable { paths ->
-                paths.anyMatch { it.toString().endsWith('.gs') }
-            }
-        }
-
-        // Validate every input before touching the trial project.
-        def source = new File(sourceFileProperty.get()).absoluteFile
-        def sourcePackage = packageOf(source, 'sourceFile')
-        def className = sourcePackage + '.' + source.name.substring(0, source.name.length() - 3)
-
-        def testFiles = testFileProperty.present
-                ? testFileProperty.get().split('[;,]').collect { it.trim() }.findAll { it }.collect { new File(it).absoluteFile }
-                : []
-        def testPackages = testFiles.collect { packageOf(it, 'testFile') }
-        testFiles.each { file ->
-            if (file.getText('UTF-8').contains('PlatformTestBase')) {
-                logger.warn("WARNING: ${file.name} mentions PlatformTestBase. Tests based on PlatformTestBase need the platform runtime "
-                        + 'and will not compile or run here; write JUnit 5 tests instead.')
-            }
-        }
-
-        def trial = new File(trialDirProperty.get()).absoluteFile
-        def testDir = new File(trial, 'src/test/gosu')
-        def stubsDir = stubsDirProperty.present ? new File(stubsDirProperty.get()).absoluteFile : new File(trial, 'src/stubs/gosu')
-        if (stubsDirProperty.present && !stubsDir.isDirectory()) {
-            throw new GradleException("stubsDir does not exist or is not a directory: ${stubsDir}")
-        }
-
-        testFiles.eachWithIndex { file, i -> copyInto(file, testDir, testPackages[i]) }
-        if (!hasGosuFiles(testDir)) {
-            def nested = trial.isDirectory() ? (trial.listFiles().findAll { it.isDirectory() && new File(it, 'src/test/gosu').isDirectory() }) : []
-            throw new GradleException("No Gosu tests found in ${testDir}.\n"
-                    + "Pass them with -PtestFile=<test .gs> or put them in:\n"
-                    + "  ${trial}${sep}src${sep}test${sep}gosu${sep}<package>${sep}<Class>Test.gs\n"
-                    + (nested ? "Found src${sep}test${sep}gosu one level deeper, in ${nested*.path.join(', ')}: "
-                        + "move its contents up to ${trial} or pass that folder as -PtrialDir.\n" : '')
-                    + 'If you extracted a zip, check that it did not create an extra folder level.')
-        }
-        copyInto(source, new File(trial, 'src/main/gosu'), sourcePackage)
-
-        def cliArgs = ['run', '--project', trial.path, '--class', className, '--test-dir', 'src/test/gosu']
-        if (stubsDir.isDirectory()) {
-            cliArgs += ['--test-dir', stubsDir.path]
-            logger.lifecycle("Using stand-in types from ${stubsDir}")
-        } else {
-            logger.lifecycle("No stubs directory: every type the class uses must come from Gosu, the JDK or --classpath")
+        if (stubsDirProperty.present) {
+            cliArgs += ['--stubs-dir', stubsDirProperty.get()]
         }
         if (extraArgsProperty.present) {
             cliArgs += extraArgsProperty.get().tokenize()
