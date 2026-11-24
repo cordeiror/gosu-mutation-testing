@@ -128,10 +128,24 @@ gradlew.bat :mutation-cli:mutateClass -PsourceFile=C:\path\to\MyClass.gs -Ptrial
 ```
 
 The task reads the `package` of the file, copies it to
-`<trialDir>/src/main/gosu/<package path>/` (the original is only read), and mutates only that class.
-Put the tests in `<trialDir>/src/test/gosu`. If the class needs types that are not available outside
-its code base, write minimal stand-ins for them in `<trialDir>/src/stubs/gosu`: they are compiled
-with the tests and never mutated. Other `run` options go in `-PmutationArgs="--threads 2 --timeout 120"`.
+`<trialDir>/src/main/gosu/<package path>/` and mutates only that class. Original files are only read.
+
+| Property | Required | Meaning |
+| --- | --- | --- |
+| `sourceFile` | yes | The Gosu class to mutate. |
+| `trialDir` | yes | The trial project. Created if missing. |
+| `testFile` | no | One or more JUnit 5 test classes, separated by `;`. Each is copied to `<trialDir>/src/test/gosu/<package path>/`. Without it, the tests must already be in `<trialDir>/src/test/gosu`. |
+| `stubsDir` | no | Folder with minimal stand-ins for types the class needs but that are not available outside its code base. Compiled with the tests, never mutated. Default: `<trialDir>/src/stubs/gosu` when it exists. |
+| `mutationArgs` | no | Other `run` options, e.g. `-PmutationArgs="--threads 2 --timeout 120"`. |
+
+Example with every input given explicitly (Windows):
+
+```bat
+gradlew.bat :mutation-cli:mutateClass -PsourceFile=C:\code\src\my\pkg\MyClass.gs -PtestFile=C:\code\test\my\pkg\MyClassTest.gs -PstubsDir=D:\trials\stubs -PtrialDir=D:\trials\my-class
+```
+
+Tests based on the platform's `PlatformTestBase` need the platform runtime and cannot be used; the task
+warns when a test file mentions it.
 
 Keep trial projects outside this repository so code from another code base is never committed here.
 Stubs replace real behaviour with assumptions, so results are only as accurate as those assumptions.
