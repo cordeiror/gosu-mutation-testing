@@ -34,6 +34,13 @@ The integration tests start child JVMs (Gosu compiler, JUnit) and take about a m
    are ordered by file, offset, operator. Do not introduce ordering that depends on thread timing or
    hash iteration.
 
+## Mutation testing a class from another code base
+
+When a user asks to run the tool on a class from their own code base (for example a platform
+configuration), use `./gradlew :mutation-cli:mutateClass` and follow
+[docs/stubbing-guide.md](docs/stubbing-guide.md) to create stand-ins for the types it needs.
+Stubs and the user's code stay outside this repository: never commit them here.
+
 ## Where things go
 
 - A new mutation operator: a class in `mutation-gosu/.../operators` implementing

@@ -147,6 +147,9 @@ gradlew.bat :mutation-cli:mutateClass -PsourceFile=C:\code\src\my\pkg\MyClass.gs
 Tests based on the platform's `PlatformTestBase` need the platform runtime and cannot be used; the task
 warns when a test file mentions it.
 
+How to write those stand-ins, with verified recipes for enum types, test base classes and
+helpers: [docs/stubbing-guide.md](docs/stubbing-guide.md).
+
 Keep trial projects outside this repository so code from another code base is never committed here.
 Stubs replace real behaviour with assumptions, so results are only as accurate as those assumptions.
 
