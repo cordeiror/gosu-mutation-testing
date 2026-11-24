@@ -72,9 +72,9 @@ final class MutationRunner {
         if (Files.isRegularFile(paths.htmlReport())) {
             NotificationGroupManager.getInstance().getNotificationGroup(NOTIFICATION_GROUP)
                     .createNotification("Mutation testing finished", source.getFileName().toString(), NotificationType.INFORMATION)
-                    .addAction(NotificationAction.createSimpleExpiring("Open report", () -> BrowserUtil.browse(paths.htmlReport().toFile())))
+                    .addAction(NotificationAction.createSimpleExpiring("Open report", () -> BrowserUtil.browse(paths.htmlReportUri())))
                     .notify(project);
-            BrowserUtil.browse(paths.htmlReport().toFile());
+            BrowserUtil.browse(paths.htmlReportUri());
             return;
         }
         String failure = read(paths.baselineFailure());

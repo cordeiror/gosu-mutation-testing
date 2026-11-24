@@ -48,6 +48,18 @@ class PluginLogicTest {
     }
 
     @Test
+    void reportUriIsAValidFileUriOnEveryOperatingSystem(@org.junit.jupiter.api.io.TempDir Path temp) {
+        TrialPaths paths = TrialPaths.of(Path.of("Foo.gs"), temp.resolve("trials with space").toString(), "");
+        java.net.URI uri = paths.htmlReportUri();
+
+        assertEquals("file", uri.getScheme());
+        assertFalse(uri.toString().contains("%5C"), uri.toString());
+        assertFalse(uri.toString().contains("\\"), uri.toString());
+        assertTrue(uri.toString().endsWith("/build/reports/gosu-mutation/mutation-report.html"), uri.toString());
+        assertEquals(paths.htmlReport().toAbsolutePath(), Path.of(uri));
+    }
+
+    @Test
     void unresolvedNamesAreCollectedOncePerName() {
         String failure = """
                 Baseline failed: the original project does not compile (FAILED)

@@ -26,6 +26,14 @@ record TrialPaths(Path trialDir, Path stubsDir, boolean stubsDirConfigured) {
         return reportDir().resolve("mutation-report.html");
     }
 
+    /**
+     * The report as a {@code file:} URI built by the JDK. Passing a {@link java.io.File} to the IDE's
+     * browser helper on Windows produced URLs with escaped backslashes ({@code file:///D:/%5C...}).
+     */
+    java.net.URI htmlReportUri() {
+        return htmlReport().toAbsolutePath().normalize().toUri();
+    }
+
     Path baselineFailure() {
         return reportDir().resolve("baseline-failure.txt");
     }
