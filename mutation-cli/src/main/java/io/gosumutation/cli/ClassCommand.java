@@ -85,7 +85,10 @@ final class ClassCommand implements Callable<Integer> {
             }
             if (!hasGosuFiles(testDir)) {
                 err.println("ERROR: no Gosu tests found in " + testDir + ".");
-                err.println("Pass them with --test <file.gs> or put them in " + testDir.resolve("<package>").resolve("<Class>Test.gs") + ".");
+                // Plain text on purpose: '<' and '>' are not valid in Windows paths.
+                String separator = testDir.getFileSystem().getSeparator();
+                err.println("Pass them with --test <file.gs> or put them in "
+                        + testDir + separator + "<package>" + separator + "<Class>Test.gs.");
                 nestedTestDir(trial).ifPresent(nested -> err.println("Found src/test/gosu one level deeper, in " + nested
                         + ": move its contents up to " + trial + " or use that folder as --trial-dir."));
                 return ExitCodes.FAILURE;
