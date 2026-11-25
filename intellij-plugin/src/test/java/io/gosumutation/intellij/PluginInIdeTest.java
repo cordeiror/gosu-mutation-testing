@@ -37,6 +37,7 @@ public class PluginInIdeTest extends BasePlatformTestCase {
         ActionManager manager = ActionManager.getInstance();
         AnAction run = manager.getAction("GosuMutation.Run");
         AnAction request = manager.getAction("GosuMutation.BuildStubRequest");
+        assertTrue(manager.getAction("GosuMutation.RunWithChosenTests") instanceof ChooseTestsAndRunAction);
         assertTrue(run instanceof RunMutationTestingAction);
         assertTrue(request instanceof BuildStubRequestAction);
         for (String menu : new String[] {"ProjectViewPopupMenu", "EditorPopupMenu"}) {
@@ -72,6 +73,7 @@ public class PluginInIdeTest extends BasePlatformTestCase {
         GosuMutationSettings.State state = new GosuMutationSettings.State();
         assertEquals("src/main/gosu=src/test/gosu", state.testMappings);
         assertTrue(state.trialsRoot.endsWith("gosu-mutation-trials"));
+        assertTrue(state.chosenTests.isEmpty());
 
         GosuMutationConfigurable page = new GosuMutationConfigurable();
         assertNotNull(page.createComponent());

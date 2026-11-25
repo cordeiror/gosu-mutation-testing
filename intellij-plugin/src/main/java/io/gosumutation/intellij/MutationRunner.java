@@ -28,7 +28,7 @@ final class MutationRunner {
 
     private MutationRunner() { }
 
-    static void run(Project project, Path source, Path test) {
+    static void run(Project project, Path source, List<Path> tests) {
         GosuMutationSettings.State settings = GosuMutationSettings.getInstance().getState();
         TrialPaths paths = TrialPaths.of(source, settings.trialsRoot, settings.stubsDir);
         Path cliLib = cliLib(settings);
@@ -43,7 +43,7 @@ final class MutationRunner {
         }
         Path javaHome = settings.javaHome.isBlank() ? Path.of(System.getProperty("java.home")) : Path.of(settings.javaHome);
 
-        List<String> command = MutationCommand.build(new MutationCommand.Request(javaHome, cliLib, source, test,
+        List<String> command = MutationCommand.build(new MutationCommand.Request(javaHome, cliLib, source, tests,
                 paths.trialDir(), paths.stubsDirConfigured() ? paths.stubsDir() : null, settings.extraArgs));
         try {
             Files.createDirectories(paths.trialDir());
@@ -55,17 +55,17 @@ final class MutationRunner {
             OSProcessHandler handler = new OSProcessHandler(commandLine);
             ProcessTerminatedListener.attach(handler);
             new RunContentExecutor(project, handler)
-                    .withTitle("Mutation: " + source.getFileName())
+                    .withTitle("Mutation: " + source.getFileName() + (tests.isEmpty() ? "" : " (" + TestSelection.describe(tests) + ")"))
                     .withActivateToolWindow(true)
                     .withAfterCompletion(() -> ApplicationManager.getApplication().invokeLater(
-                            () -> afterRun(project, source, test, paths)))
+                            () -> afterRun(project, source, tests, paths)))
                     .run();
         } catch (ExecutionException | IOException e) {
             notify(project, "Could not start gosu-mutation: " + e.getMessage(), NotificationType.ERROR);
         }
     }
 
-    private static void afterRun(Project project, Path source, Path test, TrialPaths paths) {
+    private static void afterRun(Project project, Path source, List<Path> tests, TrialPaths paths) {
         if (project.isDisposed()) {
             return;
         }
@@ -85,7 +85,7 @@ final class MutationRunner {
                                     + "An AI assistant can create minimal stand-ins for them.",
                             NotificationType.WARNING)
                     .addAction(NotificationAction.createSimpleExpiring("Build AI stub request",
-                            () -> StubRequest.open(project, source, test, paths)))
+                            () -> StubRequest.open(project, source, tests, paths)))
                     .notify(project);
         } else if (failure != null) {
             notify(project, "The baseline failed; see the Run window. " + firstLine(failure), NotificationType.WARNING);

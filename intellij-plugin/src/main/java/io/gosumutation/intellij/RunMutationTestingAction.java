@@ -3,17 +3,18 @@ package io.gosumutation.intellij;
 import com.intellij.openapi.actionSystem.ActionUpdateThread;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
-import com.intellij.openapi.fileChooser.FileChooser;
-import com.intellij.openapi.fileChooser.FileChooserDescriptor;
 import com.intellij.openapi.fileEditor.FileDocumentManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.Messages;
 import com.intellij.openapi.vfs.VirtualFile;
 
 import java.nio.file.Path;
-import java.util.Optional;
+import java.util.List;
 
-/** Right-click a .gs file: Run Mutation Testing. */
+/**
+ * Right-click a .gs file: Run Mutation Testing. Uses the tests chosen earlier for the class, or the
+ * test found through the folder mappings, or asks.
+ */
 public final class RunMutationTestingAction extends AnAction {
 
     @Override
@@ -33,38 +34,42 @@ public final class RunMutationTestingAction extends AnAction {
         if (project == null || file == null) {
             return;
         }
-        // The tool reads the files from disk.
-        FileDocumentManager.getInstance().saveAllDocuments();
         Path source = GosuFiles.pathOf(file);
         GosuMutationSettings.State settings = GosuMutationSettings.getInstance().getState();
 
-        Path test = TestFileLocator.find(source, settings.testMappings).orElse(null);
-        if (test == null) {
-            Optional<Path> chosen = askForTest(project, file);
-            if (chosen == null) {
+        List<Path> tests = TestSelection.resolve(source, settings.chosenTests, settings.testMappings);
+        if (tests.isEmpty()) {
+            tests = askForTests(project, file, source, settings);
+            if (tests == null) {
                 return; // cancelled
             }
-            test = chosen.orElse(null);
         }
-        MutationRunner.run(project, source, test);
+        start(project, source, tests);
     }
 
-    /** @return null when cancelled, empty to use the tests already in the trial project */
-    private static Optional<Path> askForTest(Project project, VirtualFile file) {
+    /** Saves the editors (the tool reads the files from disk) and runs. */
+    static void start(Project project, Path source, List<Path> tests) {
+        FileDocumentManager.getInstance().saveAllDocuments();
+        MutationRunner.run(project, source, tests);
+    }
+
+    /** @return the chosen tests (remembered for next time), empty to use the trial project's tests, null when cancelled */
+    private static List<Path> askForTests(Project project, VirtualFile file, Path source, GosuMutationSettings.State settings) {
         int answer = Messages.showYesNoCancelDialog(project,
                 "No test was found for " + file.getName() + " with the configured test folder mappings.\n"
-                        + "Choose the test file, or run with the tests already in the trial project?",
-                "Gosu Mutation Testing", "Choose Test File...", "Use Trial Project Tests", "Cancel", null);
+                        + "Choose its tests (files and/or folders; folders are searched recursively), "
+                        + "or run with the tests already in the trial project?",
+                "Gosu Mutation Testing", "Choose Tests...", "Use Trial Project Tests", "Cancel", null);
         if (answer == Messages.CANCEL) {
             return null;
         }
         if (answer == Messages.NO) {
-            return Optional.empty();
+            return List.of();
         }
-        FileChooserDescriptor descriptor = new FileChooserDescriptor(true, false, false, false, false, false)
-                .withTitle("Choose the Test of " + file.getName())
-                .withFileFilter(candidate -> "gs".equals(candidate.getExtension()));
-        VirtualFile chosen = FileChooser.chooseFile(descriptor, project, file.getParent());
-        return chosen == null ? null : Optional.of(GosuFiles.pathOf(chosen));
+        List<Path> chosen = TestChooser.choose(project, file, TestFileLocator.suggestedFolder(source, settings.testMappings));
+        if (chosen != null) {
+            TestSelection.remember(settings.chosenTests, source, chosen);
+        }
+        return chosen;
     }
 }

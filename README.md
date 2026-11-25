@@ -127,6 +127,10 @@ On Windows (cmd or PowerShell):
 gradlew.bat :mutation-cli:mutateClass -PsourceFile=C:\path\to\MyClass.gs -PtrialDir=D:\trials\my-class
 ```
 
+The trial project is created by the task and marked with a `.gosu-mutation-trial` file; on every
+run its copies of the class and tests are replaced, so nothing from an earlier run is left behind.
+Files in a trial folder the task did not create are never deleted.
+
 The task reads the `package` of the file, copies it to
 `<trialDir>/src/main/gosu/<package path>/` and mutates only that class. Original files are only read.
 
@@ -134,7 +138,7 @@ The task reads the `package` of the file, copies it to
 | --- | --- | --- |
 | `sourceFile` | yes | The Gosu class to mutate. |
 | `trialDir` | yes | The trial project. Created if missing. |
-| `testFile` | no | One or more JUnit 5 test classes, separated by `;`. Each is copied to `<trialDir>/src/test/gosu/<package path>/`. Without it, the tests must already be in `<trialDir>/src/test/gosu`. |
+| `testFile` | no | One or more test classes or folders, separated by `;`. Folders are searched recursively for Gosu files (`.gs`, `.gsx`), so a whole test folder (with its helper classes) can be given. Each file is copied to `<trialDir>/src/test/gosu/<package path>/`. Without it, the tests must already be in `<trialDir>/src/test/gosu`. |
 | `stubsDir` | no | Folder with minimal stand-ins for types the class needs but that are not available outside its code base. Compiled with the tests, never mutated. Default: `<trialDir>/src/stubs/gosu` when it exists. |
 | `mutationArgs` | no | Other `run` options, e.g. `-PmutationArgs="--threads 2 --timeout 120"`. |
 
@@ -156,7 +160,9 @@ Stubs replace real behaviour with assumptions, so results are only as accurate a
 file, in the Project view or in the editor, and choose **Run Mutation Testing**:
 
 1. The plugin finds the test of the class with the test folder mappings from the settings
-   (`Foo.gs` is matched with `FooTest.gs`), or asks for it.
+   (`Foo.gs` is matched with `FooTest.gs`). When there is none, it asks you to choose the tests:
+   any mix of files and folders (folders are searched recursively). The choice is remembered per
+   class; **Run Mutation Testing with Chosen Tests...** changes it.
 2. It runs `gosu-mutation class` for that class in a trial project of its own, and shows the output
    in the Run window.
 3. At the end it opens the HTML report.

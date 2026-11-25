@@ -10,19 +10,27 @@ import java.util.List;
 final class StubRequestBuilder {
 
     static final int MAX_FAILURE_LINES = 300;
+    /** Characters of test code included; further test files are only listed, to keep the request pasteable. */
+    static final int MAX_TEST_CHARS = 60_000;
+
+    /** A file and its content. */
+    record SourceFile(Path path, String text) { }
 
     private StubRequestBuilder() { }
 
     /**
-     * @param test        the test class, or null when it is not known
-     * @param testText    its content, or null
+     * @param tests       the test files (possibly none)
      * @param failure     baseline failure text written by gosu-mutation
      * @param stubsDir    folder where the stubs must be written
      * @param existing    stub files already present, relative to {@code stubsDir}
      * @param guide       content of docs/stubbing-guide.md
      */
-    record Input(Path source, String sourceText, Path test, String testText, String failure, Path stubsDir,
-                 List<String> existing, String guide) { }
+    record Input(Path source, String sourceText, List<SourceFile> tests, String failure, Path stubsDir,
+                 List<String> existing, String guide) {
+        Input {
+            tests = tests == null ? List.of() : List.copyOf(tests);
+        }
+    }
 
     static String build(Input in) {
         StringBuilder md = new StringBuilder();
@@ -34,11 +42,11 @@ final class StubRequestBuilder {
         md.append("1. Write the stubs as Gosu `.gs` files under this folder, one file per type, in folders matching the package:\n")
           .append("   `").append(in.stubsDir()).append("`\n");
         md.append("2. Do **not** modify the class under test");
-        if (in.test() != null) {
-            md.append(" or its test");
+        if (!in.tests().isEmpty()) {
+            md.append(in.tests().size() == 1 ? " or its test" : " or its tests");
         }
         md.append(". Do not copy their implementation into the stubs.\n");
-        md.append("3. Create only the types and members that the class and the test use.\n");
+        md.append("3. Create only the types and members that the class and the tests use.\n");
         md.append("4. Start each stub's doc comment with `STUB:` and state the assumptions it makes.\n");
         md.append("5. When done, list the stubs you created and every assumption, so the user can check them, ")
           .append("then ask the user to run **Run Mutation Testing** again. If new errors appear, they will build a new request.\n\n");
@@ -54,9 +62,21 @@ final class StubRequestBuilder {
 
         md.append("## Class under test: `").append(in.source()).append("`\n\n```gosu\n")
           .append(in.sourceText().strip()).append("\n```\n\n");
-        if (in.test() != null && in.testText() != null) {
-            md.append("## Test: `").append(in.test()).append("`\n\n```gosu\n")
-              .append(in.testText().strip()).append("\n```\n\n");
+        int budget = MAX_TEST_CHARS;
+        List<Path> omitted = new java.util.ArrayList<>();
+        for (SourceFile test : in.tests()) {
+            String text = test.text().strip();
+            if (text.length() > budget) {
+                omitted.add(test.path());
+                continue;
+            }
+            budget -= text.length();
+            md.append("## Test: `").append(test.path()).append("`\n\n```gosu\n").append(text).append("\n```\n\n");
+        }
+        if (!omitted.isEmpty()) {
+            md.append("## Other test files (not included, to keep this request short; open them if needed)\n\n");
+            omitted.forEach(path -> md.append("- `").append(path).append("`\n"));
+            md.append('\n');
         }
 
         md.append("## Stubs that already exist\n\n");

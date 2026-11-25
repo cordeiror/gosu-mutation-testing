@@ -38,7 +38,7 @@ public final class BuildStubRequestAction extends AnAction {
         }
         Path source = GosuFiles.pathOf(file);
         GosuMutationSettings.State settings = GosuMutationSettings.getInstance().getState();
-        Path test = TestFileLocator.find(source, settings.testMappings).orElse(null);
-        StubRequest.open(project, source, test, TrialPaths.of(source, settings.trialsRoot, settings.stubsDir));
+        StubRequest.open(project, source, TestSelection.resolve(source, settings.chosenTests, settings.testMappings),
+                TrialPaths.of(source, settings.trialsRoot, settings.stubsDir));
     }
 }

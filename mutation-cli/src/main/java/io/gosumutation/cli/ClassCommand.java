@@ -22,6 +22,11 @@ import java.util.stream.Stream;
  * Mutation tests one Gosu class taken from another code base: copies the class (and optionally its
  * tests) into a separate trial project, by package, then runs {@code gosu-mutation run} on that
  * project mutating only the class. Original files are only read.
+ *
+ * <p>The trial project is marked with {@value #MARKER} when this command creates it. In a marked
+ * trial project, {@code src/main/gosu} (and {@code src/test/gosu} when tests are given) are emptied
+ * before copying, so files from an earlier run cannot interfere. Folders the command did not create
+ * are never emptied.
  */
 @Command(name = "class", mixinStandardHelpOptions = true,
         description = {"Copies one Gosu class (and optionally its tests) into a trial project and mutation tests it.",
@@ -29,6 +34,7 @@ import java.util.stream.Stream;
 final class ClassCommand implements Callable<Integer> {
 
     private static final Pattern PACKAGE = Pattern.compile("(?m)^\\s*package\\s+([\\w.]+)");
+    static final String MARKER = ".gosu-mutation-trial";
 
     @CommandLine.Spec
     CommandLine.Model.CommandSpec spec;
@@ -40,8 +46,9 @@ final class ClassCommand implements Callable<Integer> {
             description = "Trial project that receives the copies. Created if missing.")
     Path trialDir;
 
-    @Option(names = "--test", paramLabel = "<file.gs>",
-            description = "A test class to copy into <trial-dir>/src/test/gosu. Repeatable. "
+    @Option(names = "--test", paramLabel = "<file.gs|dir>",
+            description = "A test class, or a folder whose tree is searched for Gosu files (.gs, .gsx), to copy into "
+                    + "<trial-dir>/src/test/gosu by package. Repeatable. "
                     + "Without it the tests must already be in <trial-dir>/src/test/gosu.")
     List<Path> tests = new ArrayList<>();
 
@@ -67,10 +74,9 @@ final class ClassCommand implements Callable<Integer> {
         Path sourceFile = source.toAbsolutePath().normalize();
         String sourcePackage = packageOf(sourceFile, "--source");
         String className = sourcePackage + "." + stripExtension(sourceFile.getFileName().toString());
-        List<Path> testFiles = tests.stream().map(p -> p.toAbsolutePath().normalize()).toList();
-        List<String> testPackages = new ArrayList<>();
-        for (Path test : testFiles) {
-            testPackages.add(packageOf(test, "--test"));
+        List<TestInput> testInputs = new ArrayList<>();
+        for (Path test : tests) {
+            testInputs.add(expand(test.toAbsolutePath().normalize()));
         }
         Path trial = trialDir.toAbsolutePath().normalize();
         Path testDir = trial.resolve("src/test/gosu");
@@ -80,14 +86,35 @@ final class ClassCommand implements Callable<Integer> {
         }
 
         try {
-            for (int i = 0; i < testFiles.size(); i++) {
-                copyInto(testFiles.get(i), testDir, testPackages.get(i), out);
+            boolean ownTrial = Files.isRegularFile(trial.resolve(MARKER));
+            boolean newTrial = !Files.exists(trial) || isEmptyDirectory(trial);
+            if (!ownTrial && !newTrial) {
+                out.println("Note: " + trial + " was not created by this command, so files already in it are kept.");
+            }
+            Files.createDirectories(trial);
+            if (newTrial) {
+                Files.writeString(trial.resolve(MARKER), "Trial project created by 'gosu-mutation class'. "
+                        + "src/main/gosu and src/test/gosu are replaced on every run." + System.lineSeparator());
+            }
+            if (ownTrial) {
+                deleteTree(trial.resolve("src/main/gosu"));
+                if (!testInputs.isEmpty()) {
+                    deleteTree(testDir);
+                }
+            }
+            for (TestInput input : testInputs) {
+                for (int i = 0; i < input.files().size(); i++) {
+                    copyInto(input.files().get(i), testDir, input.packages().get(i), input.isFolder() ? null : out);
+                }
+                if (input.isFolder()) {
+                    out.println("Copied " + input.files().size() + " Gosu file(s) found under " + input.path() + " to " + testDir);
+                }
             }
             if (!hasGosuFiles(testDir)) {
                 err.println("ERROR: no Gosu tests found in " + testDir + ".");
                 // Plain text on purpose: '<' and '>' are not valid in Windows paths.
                 String separator = testDir.getFileSystem().getSeparator();
-                err.println("Pass them with --test <file.gs> or put them in "
+                err.println("Pass them with --test <file.gs or folder> or put them in "
                         + testDir + separator + "<package>" + separator + "<Class>Test.gs.");
                 nestedTestDir(trial).ifPresent(nested -> err.println("Found src/test/gosu one level deeper, in " + nested
                         + ": move its contents up to " + trial + " or use that folder as --trial-dir."));
@@ -115,10 +142,59 @@ final class ClassCommand implements Callable<Integer> {
         return root.execute(args.toArray(String[]::new));
     }
 
-    private String packageOf(Path file, String option) {
+    /** A --test value: one file, or every Gosu file found under a folder. */
+    private record TestInput(Path path, boolean isFolder, List<Path> files, List<String> packages) { }
+
+    private TestInput expand(Path path) {
+        List<Path> files;
+        boolean folder = Files.isDirectory(path);
+        if (folder) {
+            try (Stream<Path> tree = Files.walk(path)) {
+                files = tree.filter(Files::isRegularFile).filter(ClassCommand::isGosuSource).sorted().toList();
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+            if (files.isEmpty()) {
+                throw new CommandLine.ParameterException(spec.commandLine(), "--test folder has no Gosu files: " + path);
+            }
+        } else {
+            files = List.of(path);
+        }
+        List<String> packages = new ArrayList<>();
+        for (Path file : files) {
+            packages.add(packageOf(file, "--test"));
+        }
+        return new TestInput(path, folder, files, packages);
+    }
+
+    private static boolean isEmptyDirectory(Path dir) throws IOException {
+        if (!Files.isDirectory(dir)) {
+            return false;
+        }
+        try (Stream<Path> children = Files.list(dir)) {
+            return children.findAny().isEmpty();
+        }
+    }
+
+    private static boolean isGosuSource(Path file) {
         String name = file.getFileName().toString();
-        if (!Files.isRegularFile(file) || !name.endsWith(".gs")) {
-            throw new CommandLine.ParameterException(spec.commandLine(), option + " is not a Gosu class file: " + file);
+        return name.endsWith(".gs") || name.endsWith(".gsx");
+    }
+
+    private static void deleteTree(Path dir) throws IOException {
+        if (!Files.isDirectory(dir)) {
+            return;
+        }
+        try (Stream<Path> tree = Files.walk(dir)) {
+            for (Path path : tree.sorted(java.util.Comparator.reverseOrder()).toList()) {
+                Files.delete(path);
+            }
+        }
+    }
+
+    private String packageOf(Path file, String option) {
+        if (!Files.isRegularFile(file) || !isGosuSource(file)) {
+            throw new CommandLine.ParameterException(spec.commandLine(), option + " is not a Gosu file or folder: " + file);
         }
         Matcher matcher = PACKAGE.matcher(read(file));
         if (!matcher.find()) {
@@ -127,11 +203,14 @@ final class ClassCommand implements Callable<Integer> {
         return matcher.group(1);
     }
 
+    /** @param out where to log the copy, or null to stay quiet */
     private static void copyInto(Path file, Path root, String packageName, PrintWriter out) throws IOException {
         Path targetDir = root.resolve(packageName.replace('.', '/'));
         Files.createDirectories(targetDir);
         Files.copy(file, targetDir.resolve(file.getFileName()), StandardCopyOption.REPLACE_EXISTING);
-        out.println("Copied " + file + " to " + targetDir);
+        if (out != null) {
+            out.println("Copied " + file + " to " + targetDir);
+        }
     }
 
     private static boolean hasGosuFiles(Path dir) throws IOException {

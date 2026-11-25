@@ -41,6 +41,20 @@ final class TestFileLocator {
         return candidates;
     }
 
+    /** Folder where the chooser should start: the mapped test folder, or its nearest existing parent. */
+    static Path suggestedFolder(Path source, String mappings) {
+        for (Path candidate : candidates(source, mappings)) {
+            Path folder = candidate.getParent();
+            while (folder != null && !Files.isDirectory(folder)) {
+                folder = folder.getParent();
+            }
+            if (folder != null && !folder.equals(folder.getRoot())) {
+                return folder;
+            }
+        }
+        return source.getParent();
+    }
+
     static List<String> parse(String mappings) {
         List<String> result = new ArrayList<>();
         if (mappings == null) {

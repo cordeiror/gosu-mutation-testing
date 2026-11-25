@@ -26,9 +26,9 @@ tasks.register('mutationSample', JavaExec) {
 
 // Mutation tests one Gosu class taken from another code base:
 //   ./gradlew :mutation-cli:mutateClass -PsourceFile=<class .gs> -PtrialDir=<trial project dir>
-//       [-PtestFile=<test .gs>[;<test .gs>...]] [-PstubsDir=<dir>] [-PmutationArgs="--threads 2"]
+//       [-PtestFile=<test .gs or folder>[;...]] [-PstubsDir=<dir>] [-PmutationArgs="--threads 2"]
 // sourceFile is copied into <trialDir>/src/main/gosu/<package path>/ and is the only class mutated.
-// testFile(s), when given, are copied into <trialDir>/src/test/gosu/<package path>/; otherwise the
+// testFile(s) (files, or folders searched recursively), when given, are copied into <trialDir>/src/test/gosu/<package path>/; otherwise the
 // tests must already be in <trialDir>/src/test/gosu. Stand-ins for types the class needs are taken
 // from stubsDir, or from <trialDir>/src/stubs/gosu when it exists (compiled, never mutated).
 // Original files are only read. Same as: gosu-mutation class --source ... --trial-dir ... [--test ...] [--stubs-dir ...]
@@ -47,7 +47,7 @@ tasks.register('mutateClass', JavaExec) {
     doFirst {
         if (!sourceFileProperty.present || !trialDirProperty.present) {
             throw new GradleException('Usage: gradlew :mutation-cli:mutateClass -PsourceFile=<class .gs> -PtrialDir=<trial project dir> '
-                    + '[-PtestFile=<test .gs>[;<test .gs>...]] [-PstubsDir=<dir>] [-PmutationArgs="..."]')
+                    + '[-PtestFile=<test .gs or folder>[;...]] [-PstubsDir=<dir>] [-PmutationArgs="..."]')
         }
         // The work is done by the CLI command "gosu-mutation class"; this task only maps properties to it.
         def cliArgs = ['class', '--source', sourceFileProperty.get(), '--trial-dir', trialDirProperty.get()]

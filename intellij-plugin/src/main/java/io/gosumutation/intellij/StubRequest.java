@@ -23,7 +23,7 @@ final class StubRequest {
 
     private StubRequest() { }
 
-    static void open(Project project, Path source, Path test, TrialPaths paths) {
+    static void open(Project project, Path source, List<Path> tests, TrialPaths paths) {
         String failure = MutationRunner.read(paths.baselineFailure());
         if (failure == null) {
             MutationRunner.notify(project, "Run Mutation Testing first: there is no baseline failure for "
@@ -35,9 +35,8 @@ final class StubRequest {
             MutationRunner.notify(project, "Could not read " + source, NotificationType.ERROR);
             return;
         }
-        String request = StubRequestBuilder.build(new StubRequestBuilder.Input(source, sourceText, test,
-                test == null ? null : MutationRunner.read(test), failure, paths.stubsDir(), existingStubs(paths.stubsDir()),
-                guide()));
+        String request = StubRequestBuilder.build(new StubRequestBuilder.Input(source, sourceText, testSources(tests),
+                failure, paths.stubsDir(), existingStubs(paths.stubsDir()), guide()));
 
         CopyPasteManager.getInstance().setContents(new StringSelection(request));
         LightVirtualFile file = new LightVirtualFile("stub-request-" + source.getFileName() + ".md", request);
@@ -63,6 +62,31 @@ final class StubRequest {
             }
         }
         return false;
+    }
+
+    /** The Gosu files of the chosen tests; folders are searched recursively. */
+    static List<StubRequestBuilder.SourceFile> testSources(List<Path> tests) {
+        List<StubRequestBuilder.SourceFile> sources = new java.util.ArrayList<>();
+        for (Path test : tests) {
+            if (Files.isDirectory(test)) {
+                try (Stream<Path> files = Files.walk(test)) {
+                    files.filter(p -> p.toString().endsWith(".gs") || p.toString().endsWith(".gsx")).sorted()
+                            .forEach(p -> addIfReadable(sources, p));
+                } catch (IOException e) {
+                    // Unreadable folder: the request simply lists fewer tests.
+                }
+            } else {
+                addIfReadable(sources, test);
+            }
+        }
+        return sources;
+    }
+
+    private static void addIfReadable(List<StubRequestBuilder.SourceFile> sources, Path file) {
+        String text = MutationRunner.read(file);
+        if (text != null) {
+            sources.add(new StubRequestBuilder.SourceFile(file, text));
+        }
     }
 
     private static List<String> existingStubs(Path stubsDir) {

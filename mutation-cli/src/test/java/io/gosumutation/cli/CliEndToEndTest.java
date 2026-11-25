@@ -124,6 +124,94 @@ class CliEndToEndTest {
         assertEquals(2, report.parallelism(), "unknown options are passed through to run");
     }
 
+    /** Two test classes of EligibilityService plus a helper, in a folder tree, like a real test module. */
+    private Path splitTestsFolder() throws IOException {
+        Path root = reportDir.resolve("other code base/tests");
+        Path pkg = root.resolve("sample");
+        Files.createDirectories(pkg.resolve("deeper"));
+        Files.writeString(pkg.resolve("EligibilityAgeTest.gs"), """
+                package sample
+
+                uses org.junit.jupiter.api.Assertions
+                uses org.junit.jupiter.api.Test
+
+                class EligibilityAgeTest {
+                  @Test
+                  function boundary() {
+                    Assertions.assertFalse(Ages.service().isEligible(17, true))
+                    Assertions.assertTrue(Ages.service().isEligible(18, true))
+                  }
+                }
+                """);
+        Files.writeString(pkg.resolve("deeper/EligibilityLicenseTest.gs"), """
+                package sample
+
+                uses org.junit.jupiter.api.Assertions
+                uses org.junit.jupiter.api.Test
+
+                class EligibilityLicenseTest {
+                  @Test
+                  function licenseIsRequired() {
+                    Assertions.assertFalse(Ages.service().isEligible(40, false))
+                  }
+                }
+                """);
+        Files.writeString(pkg.resolve("Ages.gs"), """
+                package sample
+
+                class Ages {
+                  static function service() : EligibilityService {
+                    return new EligibilityService()
+                  }
+                }
+                """);
+        Files.writeString(pkg.resolve("notes.txt"), "not a Gosu file");
+        return root;
+    }
+
+    @Test
+    void classCommandAcceptsAFolderOfTestsAndSearchesItsTree() throws IOException {
+        Path tests = splitTestsFolder();
+        Path trial = reportDir.resolve("trial");
+
+        int exitCode = execute("class", "--source", SAMPLE.resolve("src/main/gosu/sample/EligibilityService.gs").toString(),
+                "--test", tests.toString(), "--trial-dir", trial.toString(), "--quiet");
+
+        assertEquals(0, exitCode, err.toString() + out);
+        assertTrue(out.toString().contains("Copied 3 Gosu file(s) found under"), out.toString());
+        assertTrue(Files.exists(trial.resolve("src/test/gosu/sample/EligibilityLicenseTest.gs")), "copied by package, not by folder");
+        assertFalse(Files.exists(trial.resolve("src/test/gosu/sample/notes.txt")));
+        MutationRunReport report = JsonReportGenerator.read(trial.resolve("build/reports/gosu-mutation/mutation-report.json"));
+        assertEquals(2, report.baselineTestsRun(), "the test methods of both files ran");
+        assertTrue(report.results().stream().allMatch(r -> r.status() == MutationStatus.KILLED), report.results().toString());
+    }
+
+    @Test
+    void classCommandRefreshesItsOwnTrialButKeepsFoldersItDidNotCreate() throws IOException {
+        Path source = SAMPLE.resolve("src/main/gosu/sample/EligibilityService.gs");
+        Path test = SAMPLE.resolve("src/test/gosu/sample/EligibilityServiceTest.gs");
+
+        // Created by the command: a stale test from an earlier run is removed on the next run.
+        Path own = reportDir.resolve("own");
+        assertEquals(0, execute("class", "--source", source.toString(), "--test", splitTestsFolder().toString(),
+                "--trial-dir", own.toString(), "--quiet"), err.toString());
+        assertTrue(Files.exists(own.resolve(".gosu-mutation-trial")));
+        assertEquals(0, execute("class", "--source", source.toString(), "--test", test.toString(),
+                "--trial-dir", own.toString(), "--quiet"), err.toString());
+        assertFalse(Files.exists(own.resolve("src/test/gosu/sample/EligibilityAgeTest.gs")), "stale test removed");
+        assertTrue(Files.exists(own.resolve("src/test/gosu/sample/EligibilityServiceTest.gs")));
+
+        // Not created by the command: nothing in it is deleted, and it is not marked.
+        Path foreign = reportDir.resolve("foreign");
+        Path kept = foreign.resolve("src/test/gosu/sample/KeptTest.gs");
+        Files.createDirectories(kept.getParent());
+        Files.writeString(kept, "package sample\nclass KeptTest {}\n");
+        execute("class", "--source", source.toString(), "--test", test.toString(), "--trial-dir", foreign.toString(), "--quiet");
+        assertTrue(Files.exists(kept), "files in a folder the command did not create are kept");
+        assertFalse(Files.exists(foreign.resolve(".gosu-mutation-trial")));
+        assertTrue(out.toString().contains("was not created by this command"), out.toString());
+    }
+
     @Test
     void classCommandExplainsMissingTestsAndNestedFolders() throws IOException {
         Path nested = reportDir.resolve("trial/extracted/src/test/gosu/sample");

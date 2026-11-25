@@ -39,7 +39,7 @@ class BundledCliIntegrationTest {
         TrialPaths paths = TrialPaths.of(source, temp.resolve("trials with space").toString(), "");
         Path log = temp.resolve("run.log");
 
-        int exit = run(MutationCommand.build(new MutationCommand.Request(JAVA_HOME, CLI_LIB, source, testFound,
+        int exit = run(MutationCommand.build(new MutationCommand.Request(JAVA_HOME, CLI_LIB, source, List.of(testFound),
                 paths.trialDir(), null, "--quiet --threads 2")), log);
 
         String output = Files.readString(log);
@@ -78,7 +78,7 @@ class BundledCliIntegrationTest {
                 """);
         TrialPaths paths = TrialPaths.of(source, temp.resolve("trials").toString(), "");
 
-        int exit = run(MutationCommand.build(new MutationCommand.Request(JAVA_HOME, CLI_LIB, source, test,
+        int exit = run(MutationCommand.build(new MutationCommand.Request(JAVA_HOME, CLI_LIB, source, List.of(test),
                 paths.trialDir(), null, "--quiet")), temp.resolve("run.log"));
 
         assertEquals(1, exit);
@@ -88,17 +88,62 @@ class BundledCliIntegrationTest {
         assertTrue(unresolved.contains("package com.example.feature.actions"), unresolved.toString());
         assertTrue(unresolved.contains("symbol Status"), unresolved.toString());
 
-        String request = StubRequestBuilder.build(new StubRequestBuilder.Input(source, Files.readString(source), test,
-                Files.readString(test), failure, paths.stubsDir(), List.of(), StubRequest.guide()));
+        String request = StubRequestBuilder.build(new StubRequestBuilder.Input(source, Files.readString(source),
+                StubRequest.testSources(List.of(test.getParent())), failure, paths.stubsDir(), List.of(), StubRequest.guide()));
         assertTrue(request.contains("- symbol Status"), request);
         assertTrue(request.contains(paths.stubsDir().toString()), request);
         assertTrue(request.contains("## Recipes"), "the guide is embedded");
     }
 
     @Test
+    void runsAClassWithAFolderOfTestsChosenInTheChooser() throws Exception {
+        Path source = SAMPLE.resolve("src/main/gosu/sample/EligibilityService.gs");
+        Path folder = temp.resolve("module tests/sample");
+        Files.createDirectories(folder.resolve("nested"));
+        Files.writeString(folder.resolve("AgeTest.gs"), """
+                package sample
+
+                uses org.junit.jupiter.api.Assertions
+                uses org.junit.jupiter.api.Test
+
+                class AgeTest {
+                  @Test
+                  function boundary() {
+                    Assertions.assertFalse(new EligibilityService().isEligible(17, true))
+                    Assertions.assertTrue(new EligibilityService().isEligible(18, true))
+                  }
+                }
+                """);
+        Files.writeString(folder.resolve("nested/LicenseTest.gs"), """
+                package sample
+
+                uses org.junit.jupiter.api.Assertions
+                uses org.junit.jupiter.api.Test
+
+                class LicenseTest {
+                  @Test
+                  function licenseIsRequired() {
+                    Assertions.assertFalse(new EligibilityService().isEligible(40, false))
+                  }
+                }
+                """);
+        TrialPaths paths = TrialPaths.of(source, temp.resolve("trials").toString(), "");
+        Path log = temp.resolve("folder.log");
+
+        int exit = run(MutationCommand.build(new MutationCommand.Request(JAVA_HOME, CLI_LIB, source,
+                List.of(folder.getParent()), paths.trialDir(), null, "--threads 2")), log);
+
+        String output = Files.readString(log);
+        assertEquals(0, exit, output);
+        assertTrue(output.contains("Copied 2 Gosu file(s) found under"), output);
+        assertTrue(output.contains("Killed            : 5"), output);
+        assertEquals(2, StubRequest.testSources(List.of(folder.getParent())).size());
+    }
+
+    @Test
     void cliLibUsesTheJarWildcard() {
         assertTrue(Files.isRegularFile(CLI_LIB.resolve("mutation-cli-0.1.0.jar")), "run :mutation-cli:installDist");
-        assertTrue(MutationCommand.build(new MutationCommand.Request(JAVA_HOME, CLI_LIB, Path.of("A.gs"), null,
+        assertTrue(MutationCommand.build(new MutationCommand.Request(JAVA_HOME, CLI_LIB, Path.of("A.gs"), List.of(),
                 Path.of("t"), null, "")).contains(CLI_LIB + File.separator + "*"));
     }
 }

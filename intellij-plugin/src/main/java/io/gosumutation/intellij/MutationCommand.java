@@ -19,12 +19,16 @@ final class MutationCommand {
      * @param javaHome  JDK or JRE that runs the tool (Java 17 or 21)
      * @param cliLib    folder with the jars of the command line tool
      * @param source    class to mutate
-     * @param test      its test, or null when the tests are already in the trial project
+     * @param tests     test files or folders; empty when the tests are already in the trial project
      * @param trialDir  trial project
      * @param stubsDir  stand-in types, or null for the default ({@code <trialDir>/src/stubs/gosu})
      * @param extraArgs other options of {@code gosu-mutation run}, as typed by the user
      */
-    record Request(Path javaHome, Path cliLib, Path source, Path test, Path trialDir, Path stubsDir, String extraArgs) { }
+    record Request(Path javaHome, Path cliLib, Path source, List<Path> tests, Path trialDir, Path stubsDir, String extraArgs) {
+        Request {
+            tests = tests == null ? List.of() : List.copyOf(tests);
+        }
+    }
 
     static List<String> build(Request request) {
         boolean windows = File.separatorChar == '\\';
@@ -38,9 +42,9 @@ final class MutationCommand {
         command.add(request.source().toString());
         command.add("--trial-dir");
         command.add(request.trialDir().toString());
-        if (request.test() != null) {
+        for (Path test : request.tests()) {
             command.add("--test");
-            command.add(request.test().toString());
+            command.add(test.toString());
         }
         if (request.stubsDir() != null) {
             command.add("--stubs-dir");

@@ -27,6 +27,8 @@ public final class GosuMutationSettings implements PersistentStateComponent<Gosu
         public String cliLib = "";
         /** Extra options for "gosu-mutation run", e.g. "--threads 2 --timeout 120". */
         public String extraArgs = "";
+        /** Tests chosen by the user, per class: source path -> test files and folders separated by '|'. */
+        public java.util.Map<String, String> chosenTests = new java.util.TreeMap<>();
     }
 
     private State state = new State();

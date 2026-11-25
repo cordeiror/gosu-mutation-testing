@@ -15,7 +15,7 @@ class PluginLogicTest {
     @Test
     void commandRunsTheClassCommandWithAllInputs() {
         List<String> command = MutationCommand.build(new MutationCommand.Request(Path.of("/jdk"), Path.of("/cli/lib"),
-                Path.of("/src/Foo.gs"), Path.of("/test/FooTest.gs"), Path.of("/trials/Foo"), Path.of("/stubs"),
+                Path.of("/src/Foo.gs"), List.of(Path.of("/test/FooTest.gs")), Path.of("/trials/Foo"), Path.of("/stubs"),
                 "--threads 2 --classpath \"/a b/x.jar\""));
 
         assertEquals(Path.of("/jdk", "bin", File.separatorChar == '\\' ? "java.exe" : "java").toString(), command.get(0));
@@ -29,7 +29,7 @@ class PluginLogicTest {
     @Test
     void optionalInputsAreLeftOut() {
         List<String> command = MutationCommand.build(new MutationCommand.Request(Path.of("/jdk"), Path.of("/lib"),
-                Path.of("/Foo.gs"), null, Path.of("/t"), null, ""));
+                Path.of("/Foo.gs"), List.of(), Path.of("/t"), null, ""));
 
         assertFalse(command.contains("--test"));
         assertFalse(command.contains("--stubs-dir"));
@@ -79,7 +79,7 @@ class PluginLogicTest {
     @Test
     void stubRequestContainsTaskErrorsSourcesAndGuide() {
         String request = StubRequestBuilder.build(new StubRequestBuilder.Input(Path.of("/code/Foo.gs"), "package a\nclass Foo {}\n",
-                Path.of("/code/FooTest.gs"), "package a\nclass FooTest {}\n",
+                List.of(new StubRequestBuilder.SourceFile(Path.of("/code/FooTest.gs"), "package a\nclass FooTest {}\n")),
                 "does not compile\nerror: \"Bar\" is not a valid type.", Path.of("/stubs"), List.of("a/Old.gs"),
                 "# Stubbing guide\nRules..."));
 
@@ -95,11 +95,37 @@ class PluginLogicTest {
     @Test
     void longCompilerOutputIsTruncated() {
         String failure = "line\n".repeat(StubRequestBuilder.MAX_FAILURE_LINES + 50);
-        String request = StubRequestBuilder.build(new StubRequestBuilder.Input(Path.of("/Foo.gs"), "class Foo {}", null, null,
+        String request = StubRequestBuilder.build(new StubRequestBuilder.Input(Path.of("/Foo.gs"), "class Foo {}", List.of(),
                 failure, Path.of("/s"), List.of(), "guide"));
 
         assertTrue(request.contains("(50 more lines)"));
         assertFalse(request.contains("## Test:"));
+    }
+
+    @Test
+    void severalTestsAreAllPassedToTheCommand() {
+        List<String> command = MutationCommand.build(new MutationCommand.Request(Path.of("/jdk"), Path.of("/lib"),
+                Path.of("/Foo.gs"), List.of(Path.of("/tests/a"), Path.of("/tests/b/BTest.gs")), Path.of("/t"), null, ""));
+
+        assertEquals(List.of("--test", Path.of("/tests/a").toString(), "--test", Path.of("/tests/b/BTest.gs").toString()),
+                command.subList(command.indexOf("--test"), command.indexOf("--test") + 4));
+    }
+
+    @Test
+    void stubRequestIncludesSeveralTestsUpToABudgetAndListsTheRest() {
+        String big = "x".repeat(StubRequestBuilder.MAX_TEST_CHARS - 10);
+        String request = StubRequestBuilder.build(new StubRequestBuilder.Input(Path.of("/Foo.gs"), "class Foo {}",
+                List.of(new StubRequestBuilder.SourceFile(Path.of("/t/ATest.gs"), big),
+                        new StubRequestBuilder.SourceFile(Path.of("/t/BTest.gs"), "class BTest { /* too much */ }"),
+                        new StubRequestBuilder.SourceFile(Path.of("/t/C.gs"), "class C {}")),
+                "does not compile", Path.of("/s"), List.of(), "guide"));
+
+        assertTrue(request.contains("or its tests"));
+        assertTrue(request.contains("## Test: `" + Path.of("/t/ATest.gs") + "`"));
+        assertTrue(request.contains("## Test: `" + Path.of("/t/C.gs") + "`"), "small files still fit");
+        assertTrue(request.contains("## Other test files"));
+        assertTrue(request.contains("- `" + Path.of("/t/BTest.gs") + "`"));
+        assertFalse(request.contains("too much"));
     }
 
     @Test
