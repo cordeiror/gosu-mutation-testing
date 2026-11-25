@@ -37,4 +37,9 @@ record TrialPaths(Path trialDir, Path stubsDir, boolean stubsDirConfigured) {
     Path baselineFailure() {
         return reportDir().resolve("baseline-failure.txt");
     }
+
+    /** Console output of the last run started from the plugin. */
+    Path lastRunLog() {
+        return trialDir.resolve("build").resolve("last-run.log");
+    }
 }

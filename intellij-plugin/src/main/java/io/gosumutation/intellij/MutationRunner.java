@@ -4,6 +4,8 @@ import com.intellij.execution.ExecutionException;
 import com.intellij.execution.RunContentExecutor;
 import com.intellij.execution.configurations.GeneralCommandLine;
 import com.intellij.execution.process.OSProcessHandler;
+import com.intellij.execution.process.ProcessEvent;
+import com.intellij.execution.process.ProcessListener;
 import com.intellij.execution.process.ProcessTerminatedListener;
 import com.intellij.ide.BrowserUtil;
 import com.intellij.ide.plugins.PluginManagerCore;
@@ -13,6 +15,7 @@ import com.intellij.notification.NotificationType;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.extensions.PluginId;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.util.Key;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -49,16 +52,26 @@ final class MutationRunner {
             Files.createDirectories(paths.trialDir());
             Files.deleteIfExists(paths.htmlReport());
             Files.deleteIfExists(paths.baselineFailure());
+            Files.deleteIfExists(paths.lastRunLog());
             GeneralCommandLine commandLine = new GeneralCommandLine(command)
                     .withWorkDirectory(paths.trialDir().toFile())
                     .withCharset(StandardCharsets.UTF_8);
             OSProcessHandler handler = new OSProcessHandler(commandLine);
             ProcessTerminatedListener.attach(handler);
+            StringBuffer output = new StringBuffer();
+            handler.addProcessListener(new ProcessListener() {
+                @Override
+                public void onTextAvailable(ProcessEvent event, Key outputType) {
+                    output.append(event.getText());
+                }
+            });
             new RunContentExecutor(project, handler)
                     .withTitle("Mutation: " + source.getFileName() + (tests.isEmpty() ? "" : " (" + TestSelection.describe(tests) + ")"))
                     .withActivateToolWindow(true)
-                    .withAfterCompletion(() -> ApplicationManager.getApplication().invokeLater(
-                            () -> afterRun(project, source, tests, paths)))
+                    .withAfterCompletion(() -> {
+                        saveLog(paths, output.toString());
+                        ApplicationManager.getApplication().invokeLater(() -> afterRun(project, source, tests, paths));
+                    })
                     .run();
         } catch (ExecutionException | IOException e) {
             notify(project, "Could not start gosu-mutation: " + e.getMessage(), NotificationType.ERROR);
@@ -88,9 +101,24 @@ final class MutationRunner {
                             () -> StubRequest.open(project, source, tests, paths)))
                     .notify(project);
         } else if (failure != null) {
-            notify(project, "The baseline failed; see the Run window. " + firstLine(failure), NotificationType.WARNING);
+            NotificationGroupManager.getInstance().getNotificationGroup(NOTIFICATION_GROUP)
+                    .createNotification("The tests do not pass on the original class",
+                            firstLine(failure) + " If stubs make wrong assumptions, an AI assistant can adjust them.",
+                            NotificationType.WARNING)
+                    .addAction(NotificationAction.createSimpleExpiring("Build AI stub request",
+                            () -> StubRequest.open(project, source, tests, paths)))
+                    .notify(project);
         } else {
-            notify(project, "gosu-mutation did not produce a report; see the Run window.", NotificationType.WARNING);
+            notify(project, StubRequestStatus.of(paths, source.getFileName().toString()).message(), NotificationType.WARNING);
+        }
+    }
+
+    private static void saveLog(TrialPaths paths, String output) {
+        try {
+            Files.createDirectories(paths.lastRunLog().getParent());
+            Files.writeString(paths.lastRunLog(), output, StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            // The log only helps to explain a failure; the run itself is not affected.
         }
     }
 

@@ -58,15 +58,17 @@ public class PluginInIdeTest extends BasePlatformTestCase {
         assertFalse(onJava.getPresentation().isVisible());
     }
 
-    public void testStubRequestIsDisabledUntilARunFailed() throws Exception {
+    public void testStubRequestIsAlwaysEnabledOnGosuClassesSoItCanExplainItself() throws Exception {
         AnAction request = ActionManager.getInstance().getAction("GosuMutation.BuildStubRequest");
         GosuMutationSettings.getInstance().getState().trialsRoot = Files.createTempDirectory("trials").toString();
 
-        AnActionEvent event = eventFor(request, localFile("Foo.gs"));
-        request.update(event);
+        AnActionEvent onGosu = eventFor(request, localFile("Foo.gs"));
+        request.update(onGosu);
+        assertTrue(onGosu.getPresentation().isEnabledAndVisible());
 
-        assertTrue(event.getPresentation().isVisible());
-        assertFalse(event.getPresentation().isEnabled());
+        AnActionEvent onJava = eventFor(request, localFile("Foo.java"));
+        request.update(onJava);
+        assertFalse(onJava.getPresentation().isVisible());
     }
 
     public void testSettingsDefaultsAndSettingsPage() {

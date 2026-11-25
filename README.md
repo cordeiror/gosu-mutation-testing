@@ -169,8 +169,10 @@ file, in the Project view or in the editor, and choose **Run Mutation Testing**:
 
 When the class or its test does not compile because they use types from their original code base,
 the plugin offers **Build AI Stub Request**: it puts together the compiler errors, the class, the
-test and the [stubbing guide](docs/stubbing-guide.md), copies that request to the clipboard and
-opens it in an editor tab. Paste it into an AI assistant that can write files (for example GitHub
+tests and the [stubbing guide](docs/stubbing-guide.md), copies that request to the clipboard and
+opens it in an editor tab. The action is always available on `.gs` files; when there is no failed
+run to work from (never run, last run succeeded, or the run stopped before compiling), it says why
+and shows the last lines of the run, which are kept in `<trial>/build/last-run.log`. Paste it into an AI assistant that can write files (for example GitHub
 Copilot Chat in agent mode), let it create the stubs, and run again.
 
 The plugin bundles the command line tool and runs it with the IDE's own Java runtime, so nothing
