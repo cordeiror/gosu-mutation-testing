@@ -34,6 +34,15 @@ record TrialPaths(Path trialDir, Path stubsDir, boolean stubsDirConfigured) {
         return htmlReport().toAbsolutePath().normalize().toUri();
     }
 
+    Path jsonReport() {
+        return reportDir().resolve("mutation-report.json");
+    }
+
+    /** Mutants marked as equivalent; read by gosu-mutation on every run of this trial. */
+    Path equivalentFile() {
+        return EquivalentMutantsFile.of(trialDir);
+    }
+
     Path baselineFailure() {
         return reportDir().resolve("baseline-failure.txt");
     }

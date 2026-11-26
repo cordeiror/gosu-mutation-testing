@@ -18,6 +18,8 @@ import java.util.Set;
  * @param classFilters     simple or fully qualified class names ('*' wildcard allowed); empty means all
  * @param reportDir        where reports are written
  * @param parallelism      number of mutants evaluated concurrently
+ * @param equivalentMutants ids of mutants the user marked as equivalent: they are reported as
+ *                          {@link MutationStatus#EQUIVALENT} and not run
  */
 public record MutationConfiguration(
         Path projectDir,
@@ -28,7 +30,15 @@ public record MutationConfiguration(
         Set<String> enabledOperators,
         List<String> classFilters,
         Path reportDir,
-        int parallelism) {
+        int parallelism,
+        Set<String> equivalentMutants) {
+
+    public MutationConfiguration(Path projectDir, List<Path> sourceDirs, List<Path> testDirs, List<Path> classpath,
+                                 Duration mutantTimeout, Set<String> enabledOperators, List<String> classFilters,
+                                 Path reportDir, int parallelism) {
+        this(projectDir, sourceDirs, testDirs, classpath, mutantTimeout, enabledOperators, classFilters, reportDir,
+                parallelism, Set.of());
+    }
 
     public MutationConfiguration {
         Objects.requireNonNull(projectDir, "projectDir");
@@ -37,6 +47,7 @@ public record MutationConfiguration(
         classpath = List.copyOf(classpath);
         enabledOperators = Set.copyOf(enabledOperators);
         classFilters = List.copyOf(classFilters);
+        equivalentMutants = Set.copyOf(equivalentMutants);
         Objects.requireNonNull(mutantTimeout, "mutantTimeout");
         Objects.requireNonNull(reportDir, "reportDir");
         if (sourceDirs.isEmpty()) {

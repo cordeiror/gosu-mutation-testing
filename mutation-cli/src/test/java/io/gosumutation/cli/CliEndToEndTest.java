@@ -124,6 +124,32 @@ class CliEndToEndTest {
         assertEquals(2, report.parallelism(), "unknown options are passed through to run");
     }
 
+    @Test
+    void mutantsListedAsEquivalentInTheTrialAreSkipped() throws IOException {
+        Path source = SAMPLE.resolve("src/main/gosu/sample/EligibilityService.gs");
+        Path test = SAMPLE.resolve("src/test/gosu/sample/EligibilityServiceTest.gs");
+        Path trial = reportDir.resolve("trial");
+        Path json = trial.resolve("build/reports/gosu-mutation/mutation-report.json");
+        assertEquals(0, execute("class", "--source", source.toString(), "--test", test.toString(),
+                "--trial-dir", trial.toString(), "--quiet", "--operators", "RELATIONAL_BOUNDARY"), err.toString());
+        MutationRunReport first = JsonReportGenerator.read(json);
+        String id = first.results().get(0).mutation().id();
+        Files.writeString(trial.resolve(EquivalentMutants.FILE_NAME),
+                "# marked by hand\n" + id + "  # sample.EligibilityService line 5\n");
+
+        assertEquals(0, execute("class", "--source", source.toString(), "--test", test.toString(),
+                "--trial-dir", trial.toString(), "--quiet", "--operators", "RELATIONAL_BOUNDARY"), err.toString());
+
+        MutationRunReport second = JsonReportGenerator.read(json);
+        assertEquals(first.results().size(), second.results().size());
+        assertEquals(MutationStatus.EQUIVALENT, second.results().get(0).status());
+        assertEquals(1, second.score().equivalent());
+        assertEquals(first.score().killed() - 1, second.score().killed());
+        assertTrue(out.toString().contains("Equivalent        : 1"), out.toString());
+        assertTrue(Files.readString(json.resolveSibling("mutation-report.html")).contains("EQUIVALENT"));
+        assertTrue(Files.exists(trial.resolve(EquivalentMutants.FILE_NAME)), "the trial refresh keeps the list");
+    }
+
     /** Two test classes of EligibilityService plus a helper, in a folder tree, like a real test module. */
     private Path splitTestsFolder() throws IOException {
         Path root = reportDir.resolve("other code base/tests");
@@ -263,7 +289,8 @@ class CliEndToEndTest {
     @Test
     void operatorsCommandListsEveryBuiltInOperator() {
         assertEquals(0, execute("operators"));
-        for (String id : List.of("RELATIONAL_BOUNDARY", "EQUALITY", "LOGICAL", "BOOLEAN_LITERAL", "NUMERIC_LITERAL", "BOOLEAN_RETURN")) {
+        for (String id : List.of("RELATIONAL_BOUNDARY", "EQUALITY", "LOGICAL", "BOOLEAN_LITERAL", "NUMERIC_LITERAL", "BOOLEAN_RETURN",
+                "NEGATION_REMOVAL", "STRING_RETURN")) {
             assertTrue(out.toString().contains(id), out.toString());
         }
     }
@@ -273,6 +300,7 @@ class CliEndToEndTest {
         assertEquals(2, execute("run", "--project", reportDir.resolve("missing").toString()));
         assertEquals(2, execute("run", "--project", SAMPLE.toString(), "--operators", "NOPE"));
         assertEquals(2, execute("run", "--project", SAMPLE.toString(), "--format", "pdf"));
+        assertEquals(2, execute("run", "--project", SAMPLE.toString(), "--equivalent", reportDir.resolve("none.txt").toString()));
         assertTrue(err.toString().contains("Unknown operator 'NOPE'"), err.toString());
     }
 }

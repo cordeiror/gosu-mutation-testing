@@ -23,7 +23,8 @@ import java.util.concurrent.Future;
  * <ol>
  *   <li>run the baseline (compile + tests on the unmodified project) and require it to pass;</li>
  *   <li>generate the mutants;</li>
- *   <li>evaluate each mutant in isolation, {@code parallelism} at a time;</li>
+ *   <li>evaluate each mutant in isolation, {@code parallelism} at a time (mutants marked as
+ *       equivalent are skipped);</li>
  *   <li>aggregate the results.</li>
  * </ol>
  */
@@ -130,7 +131,9 @@ public final class MutationEngine {
 
     private MutationResult evaluate(MutationDescriptor mutant, MutationConfiguration configuration, CoverageData coverage) {
         MutationResult result;
-        if (coverage.available() && !coverage.isCovered(mutant.relativePath(), mutant.line())) {
+        if (configuration.equivalentMutants().contains(mutant.id())) {
+            result = MutationResult.of(mutant, MutationStatus.EQUIVALENT, 0, "Marked as equivalent; not run");
+        } else if (coverage.available() && !coverage.isCovered(mutant.relativePath(), mutant.line())) {
             result = MutationResult.of(mutant, MutationStatus.NO_COVERAGE, 0,
                     "No test executed line " + mutant.line() + " in the baseline run");
         } else {

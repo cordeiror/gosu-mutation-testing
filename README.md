@@ -97,6 +97,7 @@ gosu-mutation operators
 | `-f`, `--format <format>` | `html,json` | Report formats. |
 | `--threshold <percent>` | none | Exit with code 3 when the mutation score is lower. |
 | `-q`, `--quiet` | off | No progress log. |
+| `--equivalent <file>` | `<project>/gosu-mutation-equivalent.txt` if present | Ids of mutants marked as equivalent, one per line. They are reported as `EQUIVALENT` and not run. |
 
 Exit codes: `0` success, `1` the baseline failed or the run could not complete, `2` invalid
 arguments, `3` score below `--threshold`.
@@ -165,7 +166,21 @@ file, in the Project view or in the editor, and choose **Run Mutation Testing**:
    class; **Run Mutation Testing with Chosen Tests...** changes it.
 2. It runs `gosu-mutation class` for that class in a trial project of its own, and shows the output
    in the Run window.
-3. At the end it opens the HTML report.
+3. At the end the results show in the **Gosu Mutation** tool window (one row per mutant: result,
+   line, method, change, killing tests; double-click goes to the line) and in the editor: a warning
+   icon in the gutter on lines with mutants the tests miss, a check where all are killed. Lines
+   edited since the run get no marker. The HTML report is written as well (toolbar button, or a
+   setting to open it after every run). **Show Mutation Results** loads the last run of a class
+   without running it again.
+
+From the tool window:
+
+- **Build AI Test Request** (also in the right-click menu) puts together the survived and uncovered
+  mutants as diffs, the class with line numbers and its tests, and asks an AI assistant for tests
+  that kill them, or for an explanation when a mutant is equivalent.
+- **Mark as Equivalent** records a survivor that no test can detect in
+  `<trial>/gosu-mutation-equivalent.txt`. The score in the tool window updates at once, and the next
+  run skips the mutant. **Unmark** reverses it.
 
 When the class or its test does not compile because they use types from their original code base,
 the plugin offers **Build AI Stub Request**: it puts together the compiler errors, the class, the
@@ -196,6 +211,7 @@ Install `intellij-plugin/build/distributions/gosu-mutation-intellij-0.1.0.zip` w
 | Java home | empty | JDK 17 or 21 that runs the tool. Empty: the IDE's runtime. |
 | Tool jars folder | empty | Only to use another build of the tool. |
 | Extra run options | empty | Other `run` options, e.g. `--threads 2 --timeout 120`. |
+| Also open the HTML report | off | Open the report in the browser after each run, besides the tool window. |
 
 Plugin tests (`./gradlew -p intellij-plugin test`) run the bundled tool for real and start a
 headless IntelliJ IDEA to check the actions and settings; `./gradlew -p intellij-plugin verifyPlugin`
@@ -230,11 +246,13 @@ class EligibilityServiceTest {
 | `COMPILATION_ERROR` | The mutated code did not compile. | no |
 | `RUN_ERROR` | Infrastructure failure while evaluating the mutant. | no |
 | `NOT_RUN` | The run was interrupted before the mutant was evaluated. | no |
+| `EQUIVALENT` | Marked by the user as equivalent (no test can detect it); not run. | no |
 
 **Mutation score = killed / (killed + survived) x 100**, rounded to one decimal.
 
 Only mutants that compiled and were run to completion are in the denominator. Timeouts, compilation
-errors and infrastructure errors are never counted as killed; they are listed separately. The
+errors and infrastructure errors are never counted as killed; they are listed separately, and so are
+mutants marked as equivalent (see [docs/mutation-operators.md](docs/mutation-operators.md#equivalent-mutants)). The
 report also shows a second figure, *score including uncovered* = killed / (killed + survived +
 no coverage), which penalizes untested code.
 
@@ -248,6 +266,8 @@ no coverage), which penalizes untested code.
 | `BOOLEAN_LITERAL` | `true` to `false`, `false` to `true` |
 | `NUMERIC_LITERAL` | `10` to `11` |
 | `BOOLEAN_RETURN` | `return expression` to `return true` and `return false` |
+| `NEGATION_REMOVAL` | `not x` / `!x` to `x` |
+| `STRING_RETURN` | `return expression` (a `String`) to `return ""`, and `return ""` to `return "mutated"` |
 
 Details and how to add your own: [docs/mutation-operators.md](docs/mutation-operators.md).
 

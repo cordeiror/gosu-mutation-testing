@@ -108,6 +108,55 @@ class GosuMutationGeneratorTest {
     }
 
     @Test
+    void negationRemoval() {
+        List<MutationDescriptor> mutants = generate("NEGATION_REMOVAL");
+        assertEquals(List.of("11:not flag->flag"), changes(mutants));
+        assertEquals("return a > 3 and flag", mutants.get(0).mutatedLine());
+    }
+
+    @Test
+    void negationRemovalKeepsParenthesesAndBangSpelling() throws IOException {
+        Files.writeString(sampleFile, """
+                package demo
+
+                class Sample {
+                  function f(a : boolean, b : boolean) : boolean {
+                    if (not (a or b)) {
+                      return !a
+                    }
+                    return - 1 < 0 and !(b)
+                  }
+                }
+                """);
+        List<MutationDescriptor> mutants = generate("NEGATION_REMOVAL");
+        assertEquals(List.of("5:not (a or b)->(a or b)", "6:!a->a", "8:!(b)->(b)"), changes(mutants));
+        for (MutationDescriptor mutant : mutants) {
+            assertFalse(mutant.mutatedLine().contains("!") || mutant.mutatedLine().contains("not"), mutant.mutatedLine());
+        }
+    }
+
+    @Test
+    void stringReturns() throws IOException {
+        Files.writeString(sampleFile, """
+                package demo
+
+                class Sample {
+                  function code(flag : boolean) : String {
+                    if (flag) {
+                      return "A" + flag
+                    }
+                    return ""
+                  }
+
+                  property get Name() : String { return null }
+
+                  function count() : int { return 1 }
+                }
+                """);
+        assertEquals(List.of("6:\"A\" + flag->\"\"", "8:\"\"->\"mutated\""), changes(generate("STRING_RETURN")));
+    }
+
+    @Test
     void descriptorsCarryLocationAndApplyCleanly() throws IOException {
         MutationDescriptor mutant = generate("RELATIONAL_BOUNDARY").stream()
                 .filter(m -> m.line() == 11).findFirst().orElseThrow();
@@ -135,7 +184,7 @@ class GosuMutationGeneratorTest {
         List<MutationDescriptor> second = generate();
         assertEquals(first, second);
         assertEquals(first.size(), first.stream().map(MutationDescriptor::id).distinct().count());
-        assertEquals(19, first.size());
+        assertEquals(20, first.size());
     }
 
     @Test
@@ -161,6 +210,6 @@ class GosuMutationGeneratorTest {
 
         assertTrue(generator.generate(configuration(Set.of(), List.of("Other"))).stream()
                 .allMatch(m -> m.className().equals("demo.Other")));
-        assertEquals(20, generator.generate(configuration(Set.of(), List.of())).size());
+        assertEquals(21, generator.generate(configuration(Set.of(), List.of())).size());
     }
 }

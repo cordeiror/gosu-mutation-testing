@@ -137,6 +137,23 @@ runs `gosu-mutation class` as a child process with the IDE's Java runtime, and r
 the class, its test and `docs/stubbing-guide.md`; the plugin hands it to the user (clipboard and an
 editor tab) and does not call any AI service itself.
 
+How the plugin is organised:
+
+| Piece | Classes | Needs the IDE? |
+| --- | --- | --- |
+| Finding tests, building the command line, trial paths | `TestFileLocator`, `TestSelection`, `MutationCommand`, `TrialPaths` | no |
+| Reading results | `Json` (a small reader, so no JSON library is needed), `MutationResults` | no |
+| Equivalent mutants | `EquivalentMutantsFile` (`<trial>/gosu-mutation-equivalent.txt`) | no |
+| AI requests | `StubRequestBuilder`, `TestRequestBuilder`, `StubRequestStatus`, `BaselineErrors` | no |
+| Running | `MutationRunner` (process, Run window, `last-run.log`, notifications) | yes |
+| Showing results | `MutationResultsService` (project service), `MutationResultsPanel` (tool window), `EditorMarkers` (gutter icons) | yes |
+| Actions and settings | `*Action`, `GosuMutationSettings`, `GosuMutationConfigurable`, `AiRequests` | yes |
+
+After a run, `MutationResultsService` reads `mutation-report.json` of the trial, applies the
+equivalent list (so marking shows immediately, before the next run) and notifies the tool window and
+the editor markers. Markers are placed only on lines whose text still equals the mutated line in the
+report, so stale results never point at the wrong code.
+
 ### Differences from the layout in the original brief
 
 | Brief | Here | Why |
@@ -155,14 +172,15 @@ editor tab) and does not call any AI service itself.
 2. **Generate.** Parse every selected `.gs` file of the *original* project (read only) and collect
    the mutants. Sort them by file, offset, operator.
 3. **Evaluate**, `--threads` mutants at a time. For each mutant:
-   1. If the baseline coverage says the line holds code that no test executed: `NO_COVERAGE`, done.
-   2. Create a new workspace and apply the mutation to the copy. The copy must contain the expected
+   1. If the user listed the mutant's id as equivalent: `EQUIVALENT`, done.
+   2. If the baseline coverage says the line holds code that no test executed: `NO_COVERAGE`, done.
+   3. Create a new workspace and apply the mutation to the copy. The copy must contain the expected
       original text at the recorded offset, otherwise the mutant is a `RUN_ERROR`.
-   3. Compile. Compile errors: `COMPILATION_ERROR`. Timeout: `TIMED_OUT`. Compiler crash:
+   4. Compile. Compile errors: `COMPILATION_ERROR`. Timeout: `TIMED_OUT`. Compiler crash:
       `RUN_ERROR`.
-   4. Run all tests. Failures: `KILLED`, with the names of the failing tests. All pass: `SURVIVED`.
+   5. Run all tests. Failures: `KILLED`, with the names of the failing tests. All pass: `SURVIVED`.
       Timeout: `TIMED_OUT`. Worker crash: `RUN_ERROR`.
-   5. Delete the workspace.
+   6. Delete the workspace.
 4. **Report.** Compute the score and write the reports.
 
 ## Isolation guarantees
@@ -183,7 +201,7 @@ score including uncovered = killed / (killed + survived + noCoverage) x 100
 ```
 
 Both are rounded to one decimal and are 0 when the denominator is 0 (the report shows "n/a" for
-the first). `TIMED_OUT`, `COMPILATION_ERROR`, `RUN_ERROR` and `NOT_RUN` are never in either
+the first). `TIMED_OUT`, `COMPILATION_ERROR`, `RUN_ERROR`, `NOT_RUN` and `EQUIVALENT` are never in either
 formula and are always listed separately. A timeout is not counted as killed because the framework
 cannot tell an infinite loop caused by the mutation from a slow machine.
 

@@ -77,7 +77,7 @@
   .s-SURVIVED { color: var(--survived); background: var(--survived-bg); }
   .s-NO_COVERAGE { color: var(--nocov); background: var(--nocov-bg); }
   .s-TIMED_OUT { color: var(--timeout); background: var(--timeout-bg); }
-  .s-COMPILATION_ERROR, .s-RUN_ERROR, .s-NOT_RUN { color: var(--invalid); background: var(--invalid-bg); }
+  .s-COMPILATION_ERROR, .s-RUN_ERROR, .s-NOT_RUN, .s-EQUIVALENT { color: var(--invalid); background: var(--invalid-bg); }
   .desc { overflow-wrap: anywhere; }
   .time { color: var(--muted); font-size: 12.5px; font-variant-numeric: tabular-nums; white-space: nowrap; }
   .body { padding: 4px 16px 14px; }
@@ -102,7 +102,7 @@
       <div class="score-label">Mutation score</div>
       <div class="score-value" id="score"></div>
       <div class="bar" id="bar" role="img"></div>
-      <div class="formula">killed &divide; (killed + survived). Uncovered, timed out and invalid mutants are not part of the score.</div>
+      <div class="formula">killed &divide; (killed + survived). Uncovered, timed out, invalid and equivalent mutants are not part of the score.</div>
       <div class="formula" id="score2" style="margin-top:6px"></div>
     </div>
     <div class="cards" id="cards"></div>
@@ -123,11 +123,11 @@
 (function () {
   'use strict';
   var report = JSON.parse(document.getElementById('report-data').textContent);
-  var STATUSES = ['KILLED', 'SURVIVED', 'NO_COVERAGE', 'TIMED_OUT', 'COMPILATION_ERROR', 'RUN_ERROR', 'NOT_RUN'];
+  var STATUSES = ['KILLED', 'SURVIVED', 'NO_COVERAGE', 'TIMED_OUT', 'COMPILATION_ERROR', 'RUN_ERROR', 'NOT_RUN', 'EQUIVALENT'];
   var LABELS = { KILLED: 'Killed', SURVIVED: 'Survived', NO_COVERAGE: 'No coverage', TIMED_OUT: 'Timed out',
-                 COMPILATION_ERROR: 'Compilation error', RUN_ERROR: 'Run error', NOT_RUN: 'Not run' };
+                 COMPILATION_ERROR: 'Compilation error', RUN_ERROR: 'Run error', NOT_RUN: 'Not run', EQUIVALENT: 'Equivalent' };
   var COLORS = { KILLED: '--killed', SURVIVED: '--survived', NO_COVERAGE: '--nocov', TIMED_OUT: '--timeout',
-                 COMPILATION_ERROR: '--invalid', RUN_ERROR: '--invalid', NOT_RUN: '--invalid' };
+                 COMPILATION_ERROR: '--invalid', RUN_ERROR: '--invalid', NOT_RUN: '--invalid', EQUIVALENT: '--invalid' };
   var state = { cls: '', operator: '', text: '', statuses: {} };
 
   function el(tag, className, text) {
@@ -168,7 +168,7 @@
   var cards = document.getElementById('cards');
   [['Mutants generated', score.total], ['Killed', score.killed], ['Survived', score.survived],
    ['No coverage', score.noCoverage], ['Timed out', score.timedOut], ['Compilation errors', score.compilationErrors],
-   ['Run errors', score.runErrors], ['Not run', score.notRun]].forEach(function (item) {
+   ['Run errors', score.runErrors], ['Not run', score.notRun], ['Equivalent', score.equivalent || 0]].forEach(function (item) {
     var card = el('div', 'card');
     card.appendChild(el('div', 'n', item[1]));
     card.appendChild(el('div', 'l', item[0]));

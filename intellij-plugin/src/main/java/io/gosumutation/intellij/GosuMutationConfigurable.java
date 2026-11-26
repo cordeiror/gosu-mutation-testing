@@ -1,6 +1,7 @@
 package io.gosumutation.intellij;
 
 import com.intellij.openapi.options.Configurable;
+import com.intellij.ui.components.JBCheckBox;
 import com.intellij.ui.components.JBLabel;
 import com.intellij.ui.components.JBTextField;
 import com.intellij.util.ui.FormBuilder;
@@ -19,6 +20,7 @@ public final class GosuMutationConfigurable implements Configurable {
     private JBTextField javaHome;
     private JBTextField cliLib;
     private JBTextField extraArgs;
+    private JBCheckBox openHtmlReport;
 
     @Override
     public String getDisplayName() {
@@ -33,6 +35,7 @@ public final class GosuMutationConfigurable implements Configurable {
         javaHome = new JBTextField();
         cliLib = new JBTextField();
         extraArgs = new JBTextField();
+        openHtmlReport = new JBCheckBox("Also open the HTML report in the browser after each run");
         JPanel panel = FormBuilder.createFormBuilder()
                 .addLabeledComponent("Trial projects folder:", trialsRoot)
                 .addComponentToRightColumn(hint("One trial project per class is created here. Original files are only read."))
@@ -47,6 +50,8 @@ public final class GosuMutationConfigurable implements Configurable {
                 .addComponentToRightColumn(hint("Only to use another gosu-mutation build. Empty: the bundled one."))
                 .addLabeledComponent("Extra run options:", extraArgs)
                 .addComponentToRightColumn(hint("For example: --threads 2 --timeout 120"))
+                .addComponent(openHtmlReport)
+                .addComponentToRightColumn(hint("Results always show in the Gosu Mutation tool window and in the editor."))
                 .addComponentFillVertically(new JPanel(), 0)
                 .getPanel();
         reset();
@@ -68,7 +73,8 @@ public final class GosuMutationConfigurable implements Configurable {
                 || !Objects.equals(testMappings.getText(), s.testMappings)
                 || !Objects.equals(javaHome.getText(), s.javaHome)
                 || !Objects.equals(cliLib.getText(), s.cliLib)
-                || !Objects.equals(extraArgs.getText(), s.extraArgs);
+                || !Objects.equals(extraArgs.getText(), s.extraArgs)
+                || openHtmlReport.isSelected() != s.openHtmlReport;
     }
 
     @Override
@@ -80,6 +86,7 @@ public final class GosuMutationConfigurable implements Configurable {
         s.javaHome = javaHome.getText().trim();
         s.cliLib = cliLib.getText().trim();
         s.extraArgs = extraArgs.getText().trim();
+        s.openHtmlReport = openHtmlReport.isSelected();
     }
 
     @Override
@@ -91,5 +98,6 @@ public final class GosuMutationConfigurable implements Configurable {
         javaHome.setText(s.javaHome);
         cliLib.setText(s.cliLib);
         extraArgs.setText(s.extraArgs);
+        openHtmlReport.setSelected(s.openHtmlReport);
     }
 }

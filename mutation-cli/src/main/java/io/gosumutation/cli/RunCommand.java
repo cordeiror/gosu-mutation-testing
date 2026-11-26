@@ -88,6 +88,12 @@ final class RunCommand implements Callable<Integer> {
     @Option(names = {"-q", "--quiet"}, description = "Do not log progress.")
     boolean quiet;
 
+    @Option(names = "--equivalent", paramLabel = "<file>",
+            description = "File with the ids of mutants marked as equivalent, one per line ('#' starts a comment). "
+                    + "They are reported as EQUIVALENT and not run (default: <project>/" + EquivalentMutants.FILE_NAME
+                    + " when it exists).")
+    Path equivalentFile;
+
     @Override
     public Integer call() {
         PrintWriter out = spec.commandLine().getOut();
@@ -127,9 +133,16 @@ final class RunCommand implements Callable<Integer> {
         }
         Path reports = (reportDir != null ? reportDir : projectDir.resolve("build/reports/gosu-mutation")).toAbsolutePath().normalize();
 
+        Path equivalentPath = equivalentFile != null ? equivalentFile.toAbsolutePath().normalize()
+                : projectDir.resolve(EquivalentMutants.FILE_NAME);
+        if (equivalentFile != null && !Files.isRegularFile(equivalentPath)) {
+            throw new CommandLine.ParameterException(spec.commandLine(), "Equivalent mutants file does not exist: " + equivalentPath);
+        }
+        Set<String> equivalent = EquivalentMutants.read(equivalentPath);
+
         MutationConfiguration configuration = new MutationConfiguration(projectDir, sources, tests,
                 classpath.stream().map(path -> path.toAbsolutePath().normalize()).toList(),
-                Duration.ofSeconds(timeoutSeconds), enabled, classes, reports, parallelism);
+                Duration.ofSeconds(timeoutSeconds), enabled, classes, reports, parallelism, equivalent);
 
         ProjectCompiler compiler = new GosuCompilerAdapter();
         TestRunner testRunner = new GosuTestRunner();
@@ -161,6 +174,9 @@ final class RunCommand implements Callable<Integer> {
         out.println("Compilation errors: " + score.compilationErrors());
         out.println("Run errors        : " + score.runErrors());
         out.println("Not run           : " + score.notRun());
+        if (score.equivalent() > 0) {
+            out.println("Equivalent        : " + score.equivalent() + "  (marked in " + equivalentPath + ")");
+        }
         out.println("Mutation score    : " + (score.killed() + score.survived() == 0 ? "n/a (no mutant was evaluated)"
                 : score.mutationScore() + "%  (killed / (killed + survived))"));
         for (ReportGenerator generator : generators) {

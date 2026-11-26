@@ -83,11 +83,20 @@ final class MutationRunner {
             return;
         }
         if (Files.isRegularFile(paths.htmlReport())) {
-            NotificationGroupManager.getInstance().getNotificationGroup(NOTIFICATION_GROUP)
-                    .createNotification("Mutation testing finished", source.getFileName().toString(), NotificationType.INFORMATION)
-                    .addAction(NotificationAction.createSimpleExpiring("Open report", () -> BrowserUtil.browse(paths.htmlReportUri())))
-                    .notify(project);
-            BrowserUtil.browse(paths.htmlReportUri());
+            boolean shown = ShowMutationResultsAction.show(project, source, false);
+            MutationResultsService.Loaded loaded = MutationResultsService.getInstance(project).current();
+            String summary = shown && loaded != null ? loaded.results().summary() : source.getFileName().toString();
+            var notification = NotificationGroupManager.getInstance().getNotificationGroup(NOTIFICATION_GROUP)
+                    .createNotification("Mutation testing finished: " + source.getFileName(), summary, NotificationType.INFORMATION)
+                    .addAction(NotificationAction.createSimpleExpiring("Open HTML report", () -> BrowserUtil.browse(paths.htmlReportUri())));
+            if (shown && loaded != null && !loaded.results().undetected().isEmpty()) {
+                notification.addAction(NotificationAction.createSimpleExpiring("Build AI test request",
+                        () -> TestRequestAction.open(project, loaded)));
+            }
+            notification.notify(project);
+            if (!shown || GosuMutationSettings.getInstance().getState().openHtmlReport) {
+                BrowserUtil.browse(paths.htmlReportUri());
+            }
             return;
         }
         String failure = read(paths.baselineFailure());

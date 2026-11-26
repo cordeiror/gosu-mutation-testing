@@ -1,14 +1,8 @@
 package io.gosumutation.intellij;
 
 import com.intellij.notification.NotificationType;
-import com.intellij.openapi.fileEditor.FileEditorManager;
-import com.intellij.openapi.ide.CopyPasteManager;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.wm.ToolWindow;
-import com.intellij.openapi.wm.ToolWindowManager;
-import com.intellij.testFramework.LightVirtualFile;
 
-import java.awt.datatransfer.StringSelection;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
@@ -38,30 +32,8 @@ final class StubRequest {
         String request = StubRequestBuilder.build(new StubRequestBuilder.Input(source, sourceText, testSources(tests),
                 failure, paths.stubsDir(), existingStubs(paths.stubsDir()), guide()));
 
-        CopyPasteManager.getInstance().setContents(new StringSelection(request));
-        LightVirtualFile file = new LightVirtualFile("stub-request-" + source.getFileName() + ".md", request);
-        FileEditorManager.getInstance(project).openFile(file, true);
-        boolean chatOpened = activateCopilotChat(project);
-        MutationRunner.notify(project, "The AI stub request was copied to the clipboard. Paste it into "
-                + (chatOpened ? "the Copilot Chat window" : "Copilot Chat")
-                + " in agent mode so it can create the files, then run Run Mutation Testing again.",
-                NotificationType.INFORMATION);
-    }
-
-    /** Best effort: brings a Copilot chat tool window to front when one is installed. */
-    private static boolean activateCopilotChat(Project project) {
-        ToolWindowManager manager = ToolWindowManager.getInstance(project);
-        for (String id : manager.getToolWindowIds()) {
-            String lower = id.toLowerCase();
-            if (lower.contains("copilot") && lower.contains("chat")) {
-                ToolWindow window = manager.getToolWindow(id);
-                if (window != null) {
-                    window.activate(null);
-                    return true;
-                }
-            }
-        }
-        return false;
+        AiRequests.show(project, "stub-request-" + source.getFileName() + ".md", request, "AI stub request",
+                "run Run Mutation Testing again");
     }
 
     /** The Gosu files of the chosen tests; folders are searched recursively. */

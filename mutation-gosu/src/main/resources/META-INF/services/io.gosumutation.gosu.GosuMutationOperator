@@ -4,3 +4,5 @@ io.gosumutation.gosu.operators.LogicalOperator
 io.gosumutation.gosu.operators.BooleanLiteralOperator
 io.gosumutation.gosu.operators.NumericLiteralOperator
 io.gosumutation.gosu.operators.BooleanReturnOperator
+io.gosumutation.gosu.operators.NegationRemovalOperator
+io.gosumutation.gosu.operators.StringReturnOperator

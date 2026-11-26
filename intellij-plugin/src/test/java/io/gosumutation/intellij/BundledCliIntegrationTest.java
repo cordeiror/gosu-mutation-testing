@@ -49,6 +49,42 @@ class BundledCliIntegrationTest {
     }
 
     @Test
+    void survivorsAreReadMarkedAsEquivalentAndTurnedIntoATestRequest() throws Exception {
+        Path source = SAMPLE.resolve("src/main/gosu/sample/DiscountCalculator.gs");
+        Path test = SAMPLE.resolve("src/test/gosu/sample/DiscountCalculatorTest.gs");
+        TrialPaths paths = TrialPaths.of(source, temp.resolve("trials").toString(), "");
+        List<String> command = MutationCommand.build(new MutationCommand.Request(JAVA_HOME, CLI_LIB, source, List.of(test),
+                paths.trialDir(), null, "--quiet --threads 2 --operators RELATIONAL_BOUNDARY,LOGICAL"));
+        Path log = temp.resolve("run.log");
+        assertEquals(0, run(command, log), Files.readString(log));
+
+        MutationResults first = MutationResults.read(paths.jsonReport());
+        assertTrue(first.count(MutationResults.SURVIVED) > 0, first.summary());
+        assertEquals(1, first.count(MutationResults.NO_COVERAGE), first.summary());
+        MutationResults.Mutant survivor = first.mutants().stream()
+                .filter(m -> m.status().equals(MutationResults.SURVIVED)).findFirst().orElseThrow();
+        assertEquals("discountFor", survivor.method());
+
+        // Marking shows at once, and the next run skips the mutant.
+        EquivalentMutantsFile.add(paths.equivalentFile(), survivor);
+        MutationResults marked = first.withEquivalent(EquivalentMutantsFile.read(paths.equivalentFile()));
+        assertEquals(1, marked.count(MutationResults.EQUIVALENT));
+        assertEquals(first.count(MutationResults.SURVIVED) - 1, marked.count(MutationResults.SURVIVED));
+        assertEquals(0, run(command, log), Files.readString(log));
+        MutationResults second = MutationResults.read(paths.jsonReport());
+        assertEquals(MutationResults.EQUIVALENT, second.mutants().stream()
+                .filter(m -> m.id().equals(survivor.id())).findFirst().orElseThrow().status());
+        assertEquals(marked.score(), second.score());
+
+        String request = TestRequestBuilder.build(new TestRequestBuilder.Input(source, Files.readString(source),
+                second.undetected(), StubRequest.testSources(List.of(test))));
+        assertTrue(request.contains("isBulkOrder"), request);
+        assertTrue(request.contains("+ return quantity >= 50"), request);
+        assertTrue(request.contains("class DiscountCalculatorTest"), request);
+        assertTrue(!request.contains(survivor.id()), "marked mutants are not asked for");
+    }
+
+    @Test
     void compileFailureLeavesWhatTheAiRequestNeeds() throws Exception {
         Path code = temp.resolve("code/src/main/gosu/com/example/feature");
         Files.createDirectories(code);

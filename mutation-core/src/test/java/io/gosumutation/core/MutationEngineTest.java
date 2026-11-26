@@ -108,6 +108,30 @@ class MutationEngineTest {
     }
 
     @Test
+    void mutantsMarkedAsEquivalentAreNotExecutedNorScored() {
+        MutationDescriptor equivalent = mutant("a/A.gs", 1, 10);
+        MutationConfiguration configuration = new MutationConfiguration(Path.of("project"), List.of(Path.of("project/src")),
+                List.of(), List.of(), Duration.ofSeconds(5), Set.of(), List.of(), Path.of("project/report"), 2,
+                Set.of(equivalent.id()));
+        List<MutationDescriptor> executed = Collections.synchronizedList(new ArrayList<>());
+
+        MutationRunReport report = new MutationEngine(c -> passingBaseline(CoverageData.UNAVAILABLE),
+                c -> List.of(equivalent, mutant("a/A.gs", 2, 20)),
+                (mutant, c) -> {
+                    executed.add(mutant);
+                    return MutationResult.of(mutant, MutationStatus.SURVIVED, 1, "");
+                },
+                MutationListener.NONE).run(configuration);
+
+        assertEquals(MutationStatus.EQUIVALENT, report.results().get(0).status());
+        assertEquals(List.of(20), executed.stream().map(MutationDescriptor::startOffset).toList());
+        assertEquals(1, report.score().equivalent());
+        assertEquals(2, report.score().total());
+        assertEquals(0.0, report.score().mutationScore());
+        assertEquals(1, report.score().survived());
+    }
+
+    @Test
     void anExecutorFailureBecomesRunErrorAndTheRunContinues() {
         MutationRunReport report = new MutationEngine(c -> passingBaseline(CoverageData.UNAVAILABLE),
                 c -> List.of(mutant("a/A.gs", 1, 10), mutant("a/A.gs", 2, 20)),

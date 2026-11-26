@@ -18,6 +18,9 @@ List them from the command line with `gosu-mutation operators`. Select a subset 
 | `NUMERIC_LITERAL` | Numeric | `10` | `11` |
 | | | `1.5` | `2.5` |
 | `BOOLEAN_RETURN` | Boolean return | `return expression` | `return true` and `return false` (two mutants) |
+| `NEGATION_REMOVAL` | Logical | `not x`, `!x` | `x` |
+| `STRING_RETURN` | Return value | `return expression` (a `String`) | `return ""` |
+| | | `return ""` | `return "mutated"` |
 
 `<` to `<=` and `!=` to `==` were added to the list in the original brief because they are the
 natural counterparts of the requested ones.
@@ -46,6 +49,25 @@ natural counterparts of the requested ones.
 - **BOOLEAN_RETURN** applies to `IReturnStatement` whose value has type `boolean` or
   `java.lang.Boolean` and is not already a literal (those belong to `BOOLEAN_LITERAL`). One of the
   two mutants is frequently equivalent to the original for a given test, which is expected.
+- **NEGATION_REMOVAL** applies to `IUnaryNotPlusMinusExpression` with `isNot()`, in both spellings.
+  Only the operator is removed; parentheses around the operand stay (`not (a or b)` becomes
+  `(a or b)`). Bitwise `~` and arithmetic minus are left alone.
+- **STRING_RETURN** applies to `IReturnStatement` whose value has type `java.lang.String`. Any
+  value other than the literal `""` becomes `""`; `""` becomes `"mutated"`, so a branch that should
+  return an empty result is checked too. `return null` is left alone.
+
+## Equivalent mutants
+
+Some mutants behave exactly like the original for every input, so no test can kill them. Example:
+after `if (a and not b) return X` and `if (not a and b) return Y`, the condition
+`if (not a and not b)` gives the same result with `or`, because the remaining cases are "both
+true" and "both false". Such a survivor is not a missing test; it often points at redundant code.
+
+List their ids in `<project>/gosu-mutation-equivalent.txt` (or pass `--equivalent <file>`), one per
+line, `#` starting a comment. They are reported as `EQUIVALENT`, are not run and are not in the
+score. Ids depend on the offset of the change, so they change when the file is edited above the
+mutant; re-check the list after editing the class. The IntelliJ plugin maintains this file with
+**Mark as Equivalent**.
 
 ## Adding an operator
 

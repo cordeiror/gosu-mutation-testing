@@ -15,7 +15,9 @@ public enum MutationStatus {
     /** Infrastructure failure: the mutant could not be evaluated. */
     RUN_ERROR,
     /** The run was interrupted before this mutant was evaluated. */
-    NOT_RUN;
+    NOT_RUN,
+    /** The user marked the mutant as equivalent (no test can tell it from the original), so it was not run. */
+    EQUIVALENT;
 
     /** Only mutants that were really evaluated against the tests count towards the mutation score. */
     public boolean countsTowardsScore() {

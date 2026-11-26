@@ -6,11 +6,14 @@
     <description><![CDATA[
     Mutation testing for Gosu classes, from the IDE.<br>
     Right-click a <code>.gs</code> file and choose <b>Run Mutation Testing</b>: the class and its tests are copied
-    into a separate trial project, mutated one change at a time and tested; the HTML report opens at the end.
+    into a separate trial project, mutated one change at a time and tested. The results show in the
+    <b>Gosu Mutation</b> tool window and as markers in the editor; an HTML report is written too.
     Original files are never modified. Tests can be files or whole folders, chosen once per class with
     <b>Run Mutation Testing with Chosen Tests...</b>.<br>
     When the class depends on types that are not available, <b>Build AI Stub Request</b> prepares a request for an
-    AI assistant (for example GitHub Copilot Chat in agent mode) to create minimal stand-in types.
+    AI assistant (for example GitHub Copilot Chat in agent mode) to create minimal stand-in types, and
+    <b>Build AI Test Request</b> asks it for tests that detect the mutants that survived. Mutants that no test can
+    detect can be marked as equivalent, so they are left out of the score.
     ]]></description>
 
     <depends>com.intellij.modules.platform</depends>
@@ -21,6 +24,9 @@
                                  id="io.gosumutation.intellij.settings"
                                  displayName="Gosu Mutation Testing"/>
         <notificationGroup id="Gosu Mutation Testing" displayType="BALLOON"/>
+        <toolWindow id="Gosu Mutation" anchor="bottom" canCloseContents="false"
+                    icon="AllIcons.Nodes.Test"
+                    factoryClass="io.gosumutation.intellij.MutationToolWindowFactory"/>
     </extensions>
 
     <actions>
@@ -35,6 +41,14 @@
                     class="io.gosumutation.intellij.ChooseTestsAndRunAction"
                     text="Run Mutation Testing with Chosen Tests..."
                     description="Choose the test files and/or folders of this class (remembered for next runs) and run"/>
+            <action id="GosuMutation.ShowResults"
+                    class="io.gosumutation.intellij.ShowMutationResultsAction"
+                    text="Show Mutation Results"
+                    description="Show the results of the last run of this class in the Gosu Mutation tool window"/>
+            <action id="GosuMutation.BuildTestRequest"
+                    class="io.gosumutation.intellij.TestRequestAction"
+                    text="Build AI Test Request"
+                    description="Prepare a request for an AI assistant to write tests that kill the surviving mutants"/>
             <action id="GosuMutation.BuildStubRequest"
                     class="io.gosumutation.intellij.BuildStubRequestAction"
                     text="Build AI Stub Request"

@@ -40,6 +40,8 @@ public class PluginInIdeTest extends BasePlatformTestCase {
         assertTrue(manager.getAction("GosuMutation.RunWithChosenTests") instanceof ChooseTestsAndRunAction);
         assertTrue(run instanceof RunMutationTestingAction);
         assertTrue(request instanceof BuildStubRequestAction);
+        assertTrue(manager.getAction("GosuMutation.ShowResults") instanceof ShowMutationResultsAction);
+        assertTrue(manager.getAction("GosuMutation.BuildTestRequest") instanceof TestRequestAction);
         for (String menu : new String[] {"ProjectViewPopupMenu", "EditorPopupMenu"}) {
             DefaultActionGroup group = (DefaultActionGroup) manager.getAction(menu);
             assertTrue(menu, Arrays.asList(group.getChildActionsOrStubs()).contains(manager.getAction("GosuMutation.Group")));
@@ -71,11 +73,52 @@ public class PluginInIdeTest extends BasePlatformTestCase {
         assertFalse(onJava.getPresentation().isVisible());
     }
 
+    public void testResultsAreLoadedIntoTheToolWindowAndTheEditor() throws Exception {
+        Path trials = Files.createTempDirectory("trials");
+        GosuMutationSettings.getInstance().getState().trialsRoot = trials.toString();
+        Path dir = Files.createTempDirectory("code");
+        com.intellij.openapi.vfs.newvfs.impl.VfsRootAccess.allowRootAccess(getTestRootDisposable(), dir.toRealPath().toString());
+        String code = "package demo\n\nclass Foo {\n  function f() {\n    if (a == b) {\n    }\n"
+                + "    var y = 1\n    var z = 2\n    if (x and not y) {\n    }\n    var w = 3\n    return \"B\"\n  }\n}\n";
+        Path source = Files.writeString(dir.resolve("Foo.gs"), code);
+        TrialPaths paths = TrialPaths.of(source, trials.toString(), "");
+        Files.createDirectories(paths.reportDir());
+        Files.writeString(paths.jsonReport(), ResultsLogicTest.REPORT);
+        VirtualFile file = LocalFileSystem.getInstance().refreshAndFindFileByNioFile(source);
+        myFixture.openFileInEditor(file);
+
+        MutationResultsService service = MutationResultsService.getInstance(getProject());
+        MutationResultsService.Loaded loaded = service.load(source);
+        com.intellij.testFramework.PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue();
+
+        assertEquals(3, loaded.results().mutants().size());
+        assertSame(loaded, service.current());
+        MutationResultsPanel panel = new MutationResultsPanel(getProject(), getTestRootDisposable());
+        assertNotNull(panel.getContent());
+        var markup = com.intellij.openapi.editor.impl.DocumentMarkupModel.forDocument(myFixture.getEditor().getDocument(), getProject(), true);
+        java.util.List<Integer> markedLines = new java.util.ArrayList<>();
+        for (var highlighter : markup.getAllHighlighters()) {
+            if (highlighter.getGutterIconRenderer() instanceof com.intellij.openapi.editor.markup.GutterIconRenderer renderer
+                    && renderer.getTooltipText() != null && renderer.getTooltipText().contains("Mutation testing")) {
+                markedLines.add(myFixture.getEditor().getDocument().getLineNumber(highlighter.getStartOffset()) + 1);
+            }
+        }
+        java.util.Collections.sort(markedLines);
+        // Line 12 was edited since the run ("B" instead of "A"), so it gets no marker.
+        assertEquals(java.util.List.of(5, 9), markedLines);
+
+        service.setEquivalent(loaded, loaded.results().mutants().get(1), true);
+        com.intellij.testFramework.PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue();
+        assertEquals(MutationResults.EQUIVALENT, service.current().results().mutants().get(1).status());
+        assertTrue(EquivalentMutantsFile.read(paths.equivalentFile()).contains("bbb222"));
+    }
+
     public void testSettingsDefaultsAndSettingsPage() {
         GosuMutationSettings.State state = new GosuMutationSettings.State();
         assertEquals("src/main/gosu=src/test/gosu", state.testMappings);
         assertTrue(state.trialsRoot.endsWith("gosu-mutation-trials"));
         assertTrue(state.chosenTests.isEmpty());
+        assertFalse(state.openHtmlReport);
 
         GosuMutationConfigurable page = new GosuMutationConfigurable();
         assertNotNull(page.createComponent());
