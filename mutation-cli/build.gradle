@@ -15,6 +15,13 @@ application {
     mainClass = 'io.gosumutation.cli.Main'
 }
 
+// 'gosu-mutation --version' reads the version from the manifest.
+jar {
+    manifest {
+        attributes('Implementation-Title': 'gosu-mutation', 'Implementation-Version': project.version)
+    }
+}
+
 // Runs the framework against the bundled demo project:  ./gradlew :mutation-cli:mutationSample
 tasks.register('mutationSample', JavaExec) {
     group = 'verification'

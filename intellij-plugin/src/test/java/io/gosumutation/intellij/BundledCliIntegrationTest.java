@@ -194,7 +194,12 @@ class BundledCliIntegrationTest {
 
     @Test
     void cliLibUsesTheJarWildcard() {
-        assertTrue(Files.isRegularFile(CLI_LIB.resolve("mutation-cli-0.1.0.jar")), "run :mutation-cli:installDist");
+        try (var jars = Files.list(CLI_LIB)) {
+            assertTrue(jars.anyMatch(jar -> jar.getFileName().toString().matches("mutation-cli-.+\\.jar")),
+                    "run :mutation-cli:installDist");
+        } catch (java.io.IOException e) {
+            throw new java.io.UncheckedIOException(e);
+        }
         assertTrue(MutationCommand.build(new MutationCommand.Request(JAVA_HOME, CLI_LIB, Path.of("A.gs"), List.of(),
                 Path.of("t"), null, "")).contains(CLI_LIB + File.separator + "*"));
     }

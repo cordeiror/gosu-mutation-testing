@@ -12,7 +12,9 @@ and points at behaviour your tests do not actually check, even when line coverag
 - Never modifies your project: every mutant is compiled and tested in a temporary copy.
 - Produces a self contained HTML report and a JSON report.
 
-Status: MVP (0.1.0). See [Limitations](#limitations).
+Ready-made downloads (the IntelliJ plugin and the command line tool) are on the
+[Releases](https://github.com/cordeiror/gosu-mutation-testing/releases) page. See
+[Limitations](#limitations).
 
 ## Requirements
 
@@ -55,6 +57,10 @@ intentionally incomplete tests: `discountFor` has 100% line coverage, yet 5 of i
 survive, and the untested `isBulkOrder` accounts for the 4 mutants without coverage.
 
 ## Installing the command line tool
+
+Download `gosu-mutation-<version>.zip` from the
+[Releases](https://github.com/cordeiror/gosu-mutation-testing/releases) page and unzip it, or build
+it:
 
 ```bash
 ./gradlew :mutation-cli:installDist
@@ -214,13 +220,15 @@ Copilot Chat in agent mode), let it create the stubs, and run again.
 The plugin bundles the command line tool and runs it with the IDE's own Java runtime, so nothing
 else has to be installed.
 
-Build the plugin (the first build downloads IntelliJ IDEA, about 1.5 GB):
+Download `gosu-mutation-intellij-<version>.zip` from the
+[Releases](https://github.com/cordeiror/gosu-mutation-testing/releases) page, or build it (the first
+build downloads IntelliJ IDEA, about 1.5 GB):
 
 ```bash
 ./gradlew -p intellij-plugin buildPlugin
 ```
 
-Install `intellij-plugin/build/distributions/gosu-mutation-intellij-0.1.0.zip` with
+which writes `intellij-plugin/build/distributions/gosu-mutation-intellij-<version>.zip`. Install it with
 **Settings | Plugins | ⚙ | Install Plugin from Disk...**, then review
 **Settings | Tools | Gosu Mutation Testing**:
 
@@ -320,6 +328,25 @@ More in [docs/architecture.md](docs/architecture.md).
   but not covered by this project's own tests. Gosu's `gw.test.TestClass` is not supported.
 - Equivalent mutants (mutations that cannot change behaviour) are not detected and show up as
   survivors.
+
+## Releasing
+
+1. Set `projectVersion` in `gradle.properties` (it is the version of the tool and of the plugin)
+   and commit.
+2. Push a tag with the same version:
+
+```bash
+git tag v0.2.0
+```
+
+```bash
+git push origin v0.2.0
+```
+
+The [release workflow](.github/workflows/release.yml) builds and tests everything, then creates the
+GitHub release with `gosu-mutation-<version>.zip` (command line tool) and
+`gosu-mutation-intellij-<version>.zip` (IntelliJ plugin). A tag that does not match
+`projectVersion` fails the workflow.
 
 ## Development
 

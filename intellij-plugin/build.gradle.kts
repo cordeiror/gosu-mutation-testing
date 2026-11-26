@@ -1,4 +1,5 @@
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
+import java.util.Properties
 
 plugins {
     id("java")
@@ -6,7 +7,10 @@ plugins {
 }
 
 group = "io.github.gosumutation"
-version = "0.1.0"
+// Same version as the command line tool: projectVersion in the main build's gradle.properties.
+version = Properties().apply {
+    layout.projectDirectory.file("../gradle.properties").asFile.inputStream().use { load(it) }
+}.getProperty("projectVersion")
 
 repositories {
     mavenCentral()

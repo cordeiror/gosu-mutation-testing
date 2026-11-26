@@ -12,7 +12,7 @@ ext {
 
 allprojects {
     group = 'io.github.gosumutation'
-    version = '0.1.0'
+    version = projectVersion
 }
 
 subprojects {

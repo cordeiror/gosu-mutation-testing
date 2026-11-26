@@ -1,0 +1,60 @@
+name: Release
+
+# Push a tag v<version> (matching projectVersion in gradle.properties) to publish a GitHub release
+# with the command line tool and the IntelliJ plugin.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build, test and publish ${{ github.ref_name }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check that the tag matches projectVersion
+        id: version
+        run: |
+          version="$(grep '^projectVersion=' gradle.properties | cut -d= -f2 | tr -d '[:space:]')"
+          if [ "v${version}" != "${GITHUB_REF_NAME}" ]; then
+            echo "::error::Tag ${GITHUB_REF_NAME} does not match projectVersion=${version} in gradle.properties"
+            exit 1
+          fi
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Build and test the tool, and package it
+        run: ./gradlew build :mutation-cli:distZip
+
+      - name: Test, build and verify the IntelliJ plugin
+        run: ./gradlew -p intellij-plugin test buildPlugin verifyPlugin
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          tool="mutation-cli/build/distributions/gosu-mutation-${VERSION}.zip"
+          plugin="intellij-plugin/build/distributions/gosu-mutation-intellij-${VERSION}.zip"
+          ls -l "$tool" "$plugin"
+          cat > notes.md <<NOTES
+          ## Downloads
+
+          - **gosu-mutation-intellij-${VERSION}.zip**: IntelliJ IDEA 2025.3 plugin. Install with
+            *Settings | Plugins | ⚙ | Install Plugin from Disk...*. It already contains the command line tool.
+          - **gosu-mutation-${VERSION}.zip**: command line tool. Unzip and run \`bin/gosu-mutation\`
+            (\`bin\\gosu-mutation.bat\` on Windows). Needs Java 17 or 21.
+
+          NOTES
+          gh release create "${GITHUB_REF_NAME}" "$tool" "$plugin" \
+            --title "gosu-mutation ${VERSION}" --notes-file notes.md --generate-notes --verify-tag
