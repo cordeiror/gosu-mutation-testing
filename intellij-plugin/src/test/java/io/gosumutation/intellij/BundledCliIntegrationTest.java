@@ -85,6 +85,22 @@ class BundledCliIntegrationTest {
     }
 
     @Test
+    void theWizardCheckCompilesAndTestsWithoutMutating() throws Exception {
+        Path source = SAMPLE.resolve("src/main/gosu/sample/EligibilityService.gs");
+        Path test = SAMPLE.resolve("src/test/gosu/sample/EligibilityServiceTest.gs");
+        TrialPaths paths = TrialPaths.of(source, temp.resolve("trials").toString(), "");
+        Path log = temp.resolve("check.log");
+
+        int exit = run(MutationCommand.build(new MutationCommand.Request(JAVA_HOME, CLI_LIB, source, List.of(test),
+                paths.trialDir(), null, " --baseline-only")), log);
+
+        String output = Files.readString(log);
+        assertEquals(StubCheck.Kind.READY, StubCheck.of(exit, MutationRunner.read(paths.baselineFailure()), output,
+                List.of()).kind(), output);
+        assertTrue(!Files.exists(paths.jsonReport()), "the check does not mutate");
+    }
+
+    @Test
     void compileFailureLeavesWhatTheAiRequestNeeds() throws Exception {
         Path code = temp.resolve("code/src/main/gosu/com/example/feature");
         Files.createDirectories(code);

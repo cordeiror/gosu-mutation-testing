@@ -21,6 +21,7 @@ public final class GosuMutationConfigurable implements Configurable {
     private JBTextField cliLib;
     private JBTextField extraArgs;
     private JBCheckBox openHtmlReport;
+    private JBCheckBox offerWizard;
 
     @Override
     public String getDisplayName() {
@@ -36,6 +37,7 @@ public final class GosuMutationConfigurable implements Configurable {
         cliLib = new JBTextField();
         extraArgs = new JBTextField();
         openHtmlReport = new JBCheckBox("Also open the HTML report in the browser after each run");
+        offerWizard = new JBCheckBox("Offer the stubs wizard before the first run of a class");
         JPanel panel = FormBuilder.createFormBuilder()
                 .addLabeledComponent("Trial projects folder:", trialsRoot)
                 .addComponentToRightColumn(hint("One trial project per class is created here. Original files are only read."))
@@ -52,6 +54,8 @@ public final class GosuMutationConfigurable implements Configurable {
                 .addComponentToRightColumn(hint("For example: --threads 2 --timeout 120"))
                 .addComponent(openHtmlReport)
                 .addComponentToRightColumn(hint("Results always show in the Gosu Mutation tool window and in the editor."))
+                .addComponent(offerWizard)
+                .addComponentToRightColumn(hint("Helps classes from a large code base that need stand-in types to compile."))
                 .addComponentFillVertically(new JPanel(), 0)
                 .getPanel();
         reset();
@@ -74,7 +78,8 @@ public final class GosuMutationConfigurable implements Configurable {
                 || !Objects.equals(javaHome.getText(), s.javaHome)
                 || !Objects.equals(cliLib.getText(), s.cliLib)
                 || !Objects.equals(extraArgs.getText(), s.extraArgs)
-                || openHtmlReport.isSelected() != s.openHtmlReport;
+                || openHtmlReport.isSelected() != s.openHtmlReport
+                || offerWizard.isSelected() != s.offerWizardOnFirstRun;
     }
 
     @Override
@@ -87,6 +92,7 @@ public final class GosuMutationConfigurable implements Configurable {
         s.cliLib = cliLib.getText().trim();
         s.extraArgs = extraArgs.getText().trim();
         s.openHtmlReport = openHtmlReport.isSelected();
+        s.offerWizardOnFirstRun = offerWizard.isSelected();
     }
 
     @Override
@@ -99,5 +105,6 @@ public final class GosuMutationConfigurable implements Configurable {
         cliLib.setText(s.cliLib);
         extraArgs.setText(s.extraArgs);
         openHtmlReport.setSelected(s.openHtmlReport);
+        offerWizard.setSelected(s.offerWizardOnFirstRun);
     }
 }

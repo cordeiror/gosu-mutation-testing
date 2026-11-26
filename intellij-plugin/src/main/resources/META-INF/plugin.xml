@@ -30,29 +30,39 @@
     </extensions>
 
     <actions>
-        <group id="GosuMutation.Group" text="Gosu Mutation Testing" popup="false">
-            <separator/>
+        <group id="GosuMutation.Group" text="Gosu Mutation Testing" popup="true"
+               description="Mutation testing of this Gosu class: run it, see results, prepare stubs, ask an AI assistant">
             <action id="GosuMutation.Run"
                     class="io.gosumutation.intellij.RunMutationTestingAction"
                     text="Run Mutation Testing"
-                    description="Mutation test this Gosu class in a separate trial project"
+                    description="Mutate this class one change at a time in a separate trial project and run its tests"
                     icon="AllIcons.Actions.Execute"/>
             <action id="GosuMutation.RunWithChosenTests"
                     class="io.gosumutation.intellij.ChooseTestsAndRunAction"
                     text="Run Mutation Testing with Chosen Tests..."
                     description="Choose the test files and/or folders of this class (remembered for next runs) and run"/>
+            <action id="GosuMutation.Prepare"
+                    class="io.gosumutation.intellij.PrepareClassAction"
+                    text="Prepare Class (Stubs Wizard)..."
+                    description="Step by step: why stubs are needed, check the class, ask an AI assistant for stubs, repeat until it compiles"/>
             <action id="GosuMutation.ShowResults"
                     class="io.gosumutation.intellij.ShowMutationResultsAction"
                     text="Show Mutation Results"
                     description="Show the results of the last run of this class in the Gosu Mutation tool window"/>
+            <separator/>
             <action id="GosuMutation.BuildTestRequest"
                     class="io.gosumutation.intellij.TestRequestAction"
                     text="Build AI Test Request"
-                    description="Prepare a request for an AI assistant to write tests that kill the surviving mutants"/>
+                    description="Ask an AI assistant for tests that kill the mutants that survived the last run"/>
             <action id="GosuMutation.BuildStubRequest"
                     class="io.gosumutation.intellij.BuildStubRequestAction"
                     text="Build AI Stub Request"
-                    description="Prepare a request for an AI assistant to create the stand-in types this class needs"/>
+                    description="Ask an AI assistant to create the stand-in types for the compiler errors of the last run"/>
+            <separator/>
+            <action id="GosuMutation.Help"
+                    class="io.gosumutation.intellij.HelpAction"
+                    text="How Do These Options Work?"
+                    description="Explains each Gosu Mutation Testing option"/>
             <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
             <add-to-group group-id="EditorPopupMenu" anchor="last"/>
         </group>

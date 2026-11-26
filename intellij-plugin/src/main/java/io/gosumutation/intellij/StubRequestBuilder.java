@@ -51,7 +51,10 @@ final class StubRequestBuilder {
         md.append("5. When done, list the stubs you created and every assumption, so the user can check them, ")
           .append("then ask the user to run **Run Mutation Testing** again. If new errors appear, they will build a new request.\n\n");
 
-        List<String> unresolved = BaselineErrors.unresolvedNames(in.failure());
+        List<String> declaredIn = new java.util.ArrayList<>();
+        declaredIn.add(in.sourceText());
+        in.tests().forEach(test -> declaredIn.add(test.text()));
+        List<String> unresolved = BaselineErrors.unresolvedNames(in.failure(), declaredIn);
         if (!unresolved.isEmpty()) {
             md.append("## Names the compiler could not resolve\n\n");
             unresolved.forEach(name -> md.append("- ").append(name).append('\n'));

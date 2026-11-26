@@ -89,6 +89,7 @@ final class MutationResultsPanel extends SimpleToolWindowPanel implements Mutati
         actions.add(new ToggleEquivalent());
         actions.add(new TestRequest());
         actions.add(new OpenHtmlReport());
+        actions.add(new HelpAction());
         ActionToolbar toolbar = ActionManager.getInstance().createActionToolbar("GosuMutationResults", actions, true);
         toolbar.setTargetComponent(this);
         setToolbar(toolbar.getComponent());

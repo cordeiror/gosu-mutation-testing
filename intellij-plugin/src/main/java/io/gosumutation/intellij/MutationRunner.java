@@ -103,9 +103,11 @@ final class MutationRunner {
         if (BaselineErrors.isCompilationFailure(failure)) {
             NotificationGroupManager.getInstance().getNotificationGroup(NOTIFICATION_GROUP)
                     .createNotification("The class or its test does not compile",
-                            "It probably uses types that only exist in its original code base. "
-                                    + "An AI assistant can create minimal stand-ins for them.",
+                            errorsText(failure) + "It probably uses types that only exist in its original code base. "
+                                    + "The stubs wizard explains how to create minimal stand-ins for them.",
                             NotificationType.WARNING)
+                    .addAction(NotificationAction.createSimpleExpiring("Open stubs wizard",
+                            () -> StubWizardDialog.open(project, source, tests, true)))
                     .addAction(NotificationAction.createSimpleExpiring("Build AI stub request",
                             () -> StubRequest.open(project, source, tests, paths)))
                     .notify(project);
@@ -120,6 +122,11 @@ final class MutationRunner {
         } else {
             notify(project, StubRequestStatus.of(paths, source.getFileName().toString()).message(), NotificationType.WARNING);
         }
+    }
+
+    private static String errorsText(String failure) {
+        int count = BaselineErrors.errorCount(failure);
+        return count > 0 ? count + (count == 1 ? " compile error. " : " compile errors. ") : "";
     }
 
     private static void saveLog(TrialPaths paths, String output) {

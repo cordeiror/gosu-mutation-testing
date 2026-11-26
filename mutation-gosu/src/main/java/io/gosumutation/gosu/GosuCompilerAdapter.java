@@ -20,6 +20,7 @@ import java.util.stream.Collectors;
 public final class GosuCompilerAdapter implements ProjectCompiler {
 
     static final String GOSUC_MAIN = "gw.lang.gosuc.cli.CommandLineCompiler";
+    static final int MAX_ERRORS = 100_000;
 
     @Override
     public CompilationResult compile(CompilationRequest request) {
@@ -35,6 +36,10 @@ public final class GosuCompilerAdapter implements ProjectCompiler {
             gosucArgs.add("-d");
             gosucArgs.add(request.outputDir().toString());
             gosucArgs.add("-nowarn");
+            // gosuc stops after 100 errors by default; report them all, so that whoever fixes them
+            // (a person or an AI assistant) sees everything that is missing in one go.
+            gosucArgs.add("-maxerrs");
+            gosucArgs.add(String.valueOf(MAX_ERRORS));
             int options = gosucArgs.size();
             for (Path root : request.sourceRoots()) {
                 GosuSourceFiles.compilableFiles(root).forEach(file -> gosucArgs.add(file.toString()));

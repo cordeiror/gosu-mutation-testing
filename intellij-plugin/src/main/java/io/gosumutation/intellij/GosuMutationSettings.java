@@ -27,6 +27,8 @@ public final class GosuMutationSettings implements PersistentStateComponent<Gosu
         public String cliLib = "";
         /** Extra options for "gosu-mutation run", e.g. "--threads 2 --timeout 120". */
         public String extraArgs = "";
+        /** Before the first run of a class, offer the stubs wizard. */
+        public boolean offerWizardOnFirstRun = true;
         /** Also open the HTML report in the browser after each run (results always show in the tool window). */
         public boolean openHtmlReport = false;
         /** Tests chosen by the user, per class: source path -> test files and folders separated by '|'. */

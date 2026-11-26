@@ -44,7 +44,41 @@ public final class RunMutationTestingAction extends AnAction {
                 return; // cancelled
             }
         }
+        if (settings.offerWizardOnFirstRun && neverRun(source, settings)) {
+            int answer = com.intellij.openapi.ui.MessageDialogBuilder.yesNoCancel("First Run of " + file.getName(),
+                            "This is the first mutation testing run of " + file.getName() + ".\n\n"
+                            + "Classes from a large code base often use types that the trial project does not have, so "
+                            + "they do not compile there until minimal stand-ins (stubs) are created. The wizard explains "
+                            + "this, checks the class in a few seconds and helps an AI assistant create the stubs.\n\n"
+                            + "Prepare with the wizard, or run now?")
+                    .yesText("Prepare with Wizard")
+                    .noText("Run Now")
+                    .cancelText("Cancel")
+                    .doNotAsk(new com.intellij.openapi.ui.DoNotAskOption.Adapter() {
+                        @Override
+                        public void rememberChoice(boolean isSelected, int exitCode) {
+                            if (isSelected) {
+                                settings.offerWizardOnFirstRun = false;
+                            }
+                        }
+                    })
+                    .show(project);
+            if (answer == Messages.CANCEL) {
+                return;
+            }
+            if (answer == Messages.YES) {
+                StubWizardDialog.open(project, source, tests, false);
+                return;
+            }
+        }
         start(project, source, tests);
+    }
+
+    /** No earlier run left anything in the trial project of the class. */
+    static boolean neverRun(Path source, GosuMutationSettings.State settings) {
+        TrialPaths paths = TrialPaths.of(source, settings.trialsRoot, settings.stubsDir);
+        return !java.nio.file.Files.exists(paths.jsonReport()) && !java.nio.file.Files.exists(paths.baselineFailure())
+                && !java.nio.file.Files.exists(paths.lastRunLog());
     }
 
     /** Saves the editors (the tool reads the files from disk) and runs. */

@@ -110,7 +110,8 @@ the whole pipeline for real.
   `ServiceLoader`. `GosuSource` maps tree nodes back to text.
 - `GosuMutationGenerator`: walks each tree, asks every enabled operator for edits, validates each
   edit against the file on disk and builds the descriptors.
-- `GosuCompilerAdapter`: runs `gosuc` in a child JVM.
+- `GosuCompilerAdapter`: runs `gosuc` in a child JVM, with `-maxerrs` raised so that every compile
+  error is reported (gosuc stops after 100 by default).
 
 ### mutation-runner
 
@@ -145,8 +146,10 @@ How the plugin is organised:
 | Reading results | `Json` (a small reader, so no JSON library is needed), `MutationResults` | no |
 | Equivalent mutants | `EquivalentMutantsFile` (`<trial>/gosu-mutation-equivalent.txt`) | no |
 | AI requests | `StubRequestBuilder`, `TestRequestBuilder`, `StubRequestStatus`, `BaselineErrors` | no |
+| Stubs wizard logic and texts | `StubCheck` (outcome of a check), `StubWizardTexts`, `PluginHelp` | no |
 | Running | `MutationRunner` (process, Run window, `last-run.log`, notifications) | yes |
 | Showing results | `MutationResultsService` (project service), `MutationResultsPanel` (tool window), `EditorMarkers` (gutter icons) | yes |
+| Stubs wizard | `StubWizardDialog` (non-modal, runs `class ... --baseline-only` in a background task) | yes |
 | Actions and settings | `*Action`, `GosuMutationSettings`, `GosuMutationConfigurable`, `AiRequests` | yes |
 
 After a run, `MutationResultsService` reads `mutation-report.json` of the trial, applies the

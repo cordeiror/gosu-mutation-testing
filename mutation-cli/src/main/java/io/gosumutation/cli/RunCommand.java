@@ -88,6 +88,11 @@ final class RunCommand implements Callable<Integer> {
     @Option(names = {"-q", "--quiet"}, description = "Do not log progress.")
     boolean quiet;
 
+    @Option(names = "--baseline-only",
+            description = "Only compile the project and run its tests, without mutating. Exit code 0 when both succeed. "
+                    + "Useful to check stand-in types quickly.")
+    boolean baselineOnly;
+
     @Option(names = "--equivalent", paramLabel = "<file>",
             description = "File with the ids of mutants marked as equivalent, one per line ('#' starts a comment). "
                     + "They are reported as EQUIVALENT and not run (default: <project>/" + EquivalentMutants.FILE_NAME
@@ -151,6 +156,9 @@ final class RunCommand implements Callable<Integer> {
                 new GosuMutationGenerator(), new MutationExecutor(compiler, testRunner), listener);
 
         deleteStaleBaselineFailure(reports);
+        if (baselineOnly) {
+            return checkBaseline(new IsolatedBaselineRunner(compiler, testRunner), configuration, listener, reports, out, err);
+        }
         MutationRunReport report;
         try {
             report = engine.run(configuration);
@@ -188,6 +196,28 @@ final class RunCommand implements Callable<Integer> {
             err.println("Mutation score " + score.mutationScore() + "% is below the threshold of " + threshold + "%");
             return ExitCodes.BELOW_THRESHOLD;
         }
+        return ExitCodes.OK;
+    }
+
+    private static int checkBaseline(IsolatedBaselineRunner runner, MutationConfiguration configuration,
+                                     MutationListener listener, Path reports, PrintWriter out, PrintWriter err) {
+        listener.baselineStarted();
+        io.gosumutation.core.port.BaselineResult baseline;
+        try {
+            baseline = runner.run(configuration);
+        } catch (RuntimeException e) {
+            err.println("ERROR: baseline check failed: " + e);
+            return ExitCodes.FAILURE;
+        }
+        listener.baselineFinished(baseline);
+        if (!baseline.passed()) {
+            BaselineFailedException failure = new BaselineFailedException(baseline);
+            err.println("ERROR: " + failure.getMessage());
+            writeBaselineFailure(reports, failure, err);
+            return ExitCodes.FAILURE;
+        }
+        out.println("Baseline OK: the project compiles and its " + baseline.testsRun() + " tests pass.");
+        out.flush();
         return ExitCodes.OK;
     }
 

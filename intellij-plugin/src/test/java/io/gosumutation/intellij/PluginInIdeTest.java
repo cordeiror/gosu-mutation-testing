@@ -42,6 +42,9 @@ public class PluginInIdeTest extends BasePlatformTestCase {
         assertTrue(request instanceof BuildStubRequestAction);
         assertTrue(manager.getAction("GosuMutation.ShowResults") instanceof ShowMutationResultsAction);
         assertTrue(manager.getAction("GosuMutation.BuildTestRequest") instanceof TestRequestAction);
+        assertTrue(manager.getAction("GosuMutation.Prepare") instanceof PrepareClassAction);
+        assertTrue(manager.getAction("GosuMutation.Help") instanceof HelpAction);
+        assertTrue("the options are grouped in a submenu", ((DefaultActionGroup) manager.getAction("GosuMutation.Group")).isPopup());
         for (String menu : new String[] {"ProjectViewPopupMenu", "EditorPopupMenu"}) {
             DefaultActionGroup group = (DefaultActionGroup) manager.getAction(menu);
             assertTrue(menu, Arrays.asList(group.getChildActionsOrStubs()).contains(manager.getAction("GosuMutation.Group")));
@@ -119,6 +122,7 @@ public class PluginInIdeTest extends BasePlatformTestCase {
         assertTrue(state.trialsRoot.endsWith("gosu-mutation-trials"));
         assertTrue(state.chosenTests.isEmpty());
         assertFalse(state.openHtmlReport);
+        assertTrue(state.offerWizardOnFirstRun);
 
         GosuMutationConfigurable page = new GosuMutationConfigurable();
         assertNotNull(page.createComponent());

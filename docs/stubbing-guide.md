@@ -31,6 +31,14 @@ error: No function defined for assertEquals.
 
 Errors in your own test code are not a stub problem; fix the tests instead.
 
+Many errors only follow from a missing type: `Could not resolve symbol` for a local variable,
+field or block parameter the class declares itself (`var current = vehicle.Value` when `Vehicle`
+is missing), or `Expecting ":" clause for function declaration` on a block such as
+`\opt -> opt.Value`. Do not stub those names; they disappear once the types exist.
+
+To check stubs quickly, add `--baseline-only`: the class and its tests are compiled and run, but
+nothing is mutated. Every compile error is reported, not only the first 100.
+
 ## Where they go
 
 - A folder outside this repository, for example `<trials>/stubs`, holding Gosu sources by package:

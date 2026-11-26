@@ -254,6 +254,30 @@ class CliEndToEndTest {
     }
 
     @Test
+    void baselineOnlyChecksWithoutMutatingAndReportsEveryCompileError() throws IOException {
+        assertEquals(0, execute("run", "--project", SAMPLE.toString(), "--report-dir", reportDir.toString(),
+                "--quiet", "--baseline-only"), err.toString());
+        assertTrue(out.toString().contains("Baseline OK"), out.toString());
+        assertFalse(Files.exists(reportDir.resolve("mutation-report.json")), "nothing is mutated");
+
+        // More than gosuc's default limit of 100 errors: all of them must be reported.
+        Path trial = reportDir.resolve("many errors");
+        Files.createDirectories(trial.resolve("src/main/gosu/demo"));
+        Files.createDirectories(trial.resolve("src/test/gosu/demo"));
+        StringBuilder code = new StringBuilder("package demo\nclass Broken {\n");
+        for (int i = 0; i < 130; i++) {
+            code.append("  function f").append(i).append("() : Missing").append(i).append(" { return null }\n");
+        }
+        Files.writeString(trial.resolve("src/main/gosu/demo/Broken.gs"), code.append("}\n").toString());
+        Files.writeString(trial.resolve("src/test/gosu/demo/BrokenTest.gs"), "package demo\nclass BrokenTest {}\n");
+
+        assertEquals(1, execute("run", "--project", trial.toString(), "--quiet", "--baseline-only"));
+        String failure = Files.readString(trial.resolve("build/reports/gosu-mutation/baseline-failure.txt"));
+        assertTrue(failure.contains("\"Missing129\" is not a valid type"), failure);
+        assertFalse(failure.contains("Error threshold"), failure);
+    }
+
+    @Test
     void baselineFailureIsWrittenToAFileForTools() throws IOException {
         Path trial = reportDir.resolve("broken");
         Files.createDirectories(trial.resolve("src/main/gosu/demo"));

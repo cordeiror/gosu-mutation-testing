@@ -97,6 +97,7 @@ gosu-mutation operators
 | `-f`, `--format <format>` | `html,json` | Report formats. |
 | `--threshold <percent>` | none | Exit with code 3 when the mutation score is lower. |
 | `-q`, `--quiet` | off | No progress log. |
+| `--baseline-only` | off | Only compile and run the tests, without mutating; exit code 0 when both succeed. Used to check stubs quickly. |
 | `--equivalent <file>` | `<project>/gosu-mutation-equivalent.txt` if present | Ids of mutants marked as equivalent, one per line. They are reported as `EQUIVALENT` and not run. |
 
 Exit codes: `0` success, `1` the baseline failed or the run could not complete, `2` invalid
@@ -158,7 +159,9 @@ Stubs replace real behaviour with assumptions, so results are only as accurate a
 ## IntelliJ IDEA plugin
 
 `intellij-plugin/` contains a plugin for IntelliJ IDEA 2025.3 (build 253). Right-click a `.gs`
-file, in the Project view or in the editor, and choose **Run Mutation Testing**:
+file, in the Project view or in the editor, and open the **Gosu Mutation Testing** submenu. Its
+last item, **How Do These Options Work?**, explains every option (IntelliJ shows no tooltips in
+context menus). Choose **Run Mutation Testing**:
 
 1. The plugin finds the test of the class with the test folder mappings from the settings
    (`Foo.gs` is matched with `FooTest.gs`). When there is none, it asks you to choose the tests:
@@ -182,8 +185,26 @@ From the tool window:
   `<trial>/gosu-mutation-equivalent.txt`. The score in the tool window updates at once, and the next
   run skips the mutant. **Unmark** reverses it.
 
-When the class or its test does not compile because they use types from their original code base,
-the plugin offers **Build AI Stub Request**: it puts together the compiler errors, the class, the
+### Classes that need stubs: the wizard
+
+A class from a large code base usually does not compile alone in the trial project, because it uses
+other types of that code base. **Prepare Class (Stubs Wizard)...** guides you through it, and the
+first **Run Mutation Testing** of a class offers it (this can be turned off in the settings):
+
+1. **Why stubs**: what the trial project is, why the class does not compile there, what a stub is.
+2. **Tests and stubs folder**: choose the tests and the shared stubs folder.
+3. **Create stubs and check**: *Check Now* compiles the class and runs its tests without mutating
+   (`run --baseline-only`, a few seconds). It lists the types to create (errors about the class's
+   own variables and block parameters, which only follow from missing types, are left out) and the
+   number of errors. *Copy AI Stub Request* hands the request to Copilot Chat; check again, and the
+   wizard shows the progress (`388 → 42 → 0`). When the class compiles and its tests pass,
+   *Run Mutation Testing* starts the real run.
+
+The wizard does not block the IDE, so the AI chat can be used while it is open. When a run fails to
+compile, the notification offers to open it. The compiler reports every error (not only the first
+100), so each request contains everything that is missing.
+
+Without the wizard, when the class or its test does not compile, the plugin offers **Build AI Stub Request**: it puts together the compiler errors, the class, the
 tests and the [stubbing guide](docs/stubbing-guide.md), copies that request to the clipboard and
 opens it in an editor tab. The action is always available on `.gs` files; when there is no failed
 run to work from (never run, last run succeeded, or the run stopped before compiling), it says why
@@ -211,6 +232,7 @@ Install `intellij-plugin/build/distributions/gosu-mutation-intellij-0.1.0.zip` w
 | Java home | empty | JDK 17 or 21 that runs the tool. Empty: the IDE's runtime. |
 | Tool jars folder | empty | Only to use another build of the tool. |
 | Extra run options | empty | Other `run` options, e.g. `--threads 2 --timeout 120`. |
+| Offer the stubs wizard before the first run | on | Asks before the first run of a class whether to prepare it with the wizard. |
 | Also open the HTML report | off | Open the report in the browser after each run, besides the tool window. |
 
 Plugin tests (`./gradlew -p intellij-plugin test`) run the bundled tool for real and start a
