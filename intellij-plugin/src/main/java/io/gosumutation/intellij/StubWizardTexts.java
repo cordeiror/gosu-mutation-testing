@@ -61,8 +61,17 @@ final class StubWizardTexts {
     static String result(String className, StubCheck check, List<Integer> history, Path stubsDir) {
         StringBuilder html = new StringBuilder();
         switch (check.kind()) {
-            case READY -> html.append("<p><b>Ready.</b> ").append(escape(className))
-                    .append(" compiles and its tests pass in the trial project. Press <b>Run Mutation Testing</b>.</p>");
+            case READY -> {
+                html.append("<p style='font-size:larger'><b>Ready: you can now run mutation testing.</b></p>");
+                html.append("<p>").append(escape(className)).append(" compiles");
+                String tests = testCount(check.message());
+                html.append(tests.isEmpty() ? " and its tests pass" : " and its " + tests + " tests pass")
+                    .append(" in the trial project");
+                html.append(history.size() > 1 ? ", so the stubs are complete" : "").append(".</p>");
+                html.append("<p>Press <b>Run Mutation Testing</b> below to start. The class is mutated one change at a ")
+                    .append("time and its tests run against each mutant; the results show in the ")
+                    .append("<b>Gosu Mutation</b> tool window.</p>");
+            }
             case DOES_NOT_COMPILE -> {
                 html.append("<p><b>").append(escape(className)).append(" does not compile yet");
                 if (check.errorCount() > 0) {
@@ -120,6 +129,12 @@ final class StubWizardTexts {
             html.append(" and ").append(names.size() - MAX_LISTED).append(" more (all are in the request)");
         }
         html.append("</p>");
+    }
+
+    /** "7" from "Baseline OK: the project compiles and its 7 tests pass." */
+    private static String testCount(String message) {
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile("its (\\d+) tests? pass").matcher(message == null ? "" : message);
+        return m.find() ? m.group(1) : "";
     }
 
     private static String firstLines(String text, int count) {

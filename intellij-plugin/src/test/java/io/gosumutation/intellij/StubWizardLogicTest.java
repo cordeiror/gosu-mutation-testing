@@ -77,8 +77,12 @@ class StubWizardLogicTest {
         assertFalse(page.contains("<code>_logger</code>"), page);
         assertTrue(page.contains("Copy AI Stub Request"), page);
         assertTrue(page.contains("388 &rarr; 42"), page);
-        assertTrue(StubWizardTexts.result("Utils.gs", StubCheck.of(0, null, "", List.of()), List.of(388, 0), Path.of("/s"))
-                .contains("<b>Ready.</b>"));
+        String ready = StubWizardTexts.result("Utils.gs", StubCheck.of(0, null,
+                "Baseline OK: the project compiles and its 7 tests pass.\n", List.of()), List.of(388, 0), Path.of("/s"));
+        assertTrue(ready.contains("Ready: you can now run mutation testing."), ready);
+        assertTrue(ready.contains("Utils.gs compiles and its 7 tests pass in the trial project, so the stubs are complete."), ready);
+        assertTrue(ready.contains("Press <b>Run Mutation Testing</b> below"), ready);
+        assertTrue(ready.contains("388 &rarr; 0"), ready);
         assertTrue(StubWizardTexts.intro("A<B>.gs").contains("A&lt;B&gt;.gs"));
     }
 

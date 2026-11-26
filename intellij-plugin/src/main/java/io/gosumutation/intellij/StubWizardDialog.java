@@ -303,6 +303,13 @@ final class StubWizardDialog extends DialogWrapper {
         status.setText(StubWizardTexts.result(className, check, history, paths().stubsDir()));
         status.setCaretPosition(0);
         updateButtons();
+        if (check.kind() == StubCheck.Kind.READY) {
+            JButton run = getButton(getOKAction());
+            if (run != null) {
+                getRootPane().setDefaultButton(run);
+                run.requestFocusInWindow();
+            }
+        }
     }
 
     /** The class and its tests, so names they declare themselves are not reported as missing. */
